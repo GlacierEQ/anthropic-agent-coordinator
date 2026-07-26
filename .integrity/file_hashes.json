@@ -1,0 +1,18 @@
+{
+  "repo": "anthropic-agent-coordinator",
+  "algorithm": "sha256",
+  "file_count": 11,
+  "hashes": {
+    "README.md": "6cb59e545567255ca37de68089b53cd38edc752618a76a115398b4ecba9f1e9e",
+    "EASTER_EGGS.md": "0c4fc58a6163b54497fc8327ec77f4293330eea4ba636e30db202836bd450900",
+    "AKOS.md": "7fe75c369aef1b05d842fbc5a4a2e347e949787e0a17bec0bb99a2f8b490b9ca",
+    "HELIX_STRAND.md": "eab36186cf85580e60a291925fa02ec0dc996a49d629e6e17a9127537532e316",
+    "mastermind_sidecar.py": "795cc4933f408ad5a089873219ab59b401640534bfaa7a5acb87b9fae140fe60",
+    "SECURITY_AND_FLEET_OPS.md": "26141c0f07d95847d679de423ddb7bdee6f3e319d204383c89a58d6d3bb610c7",
+    "ISSUE_CONTRACT.md": "aa89663adc3e639700f328d2cc13d690b897843f08d7574e39e6b4f36b086646",
+    "tests/test_coordinator.py": "1cefd1cfef895858404b1b9fc055a69897faeea580cecb35ac5cc5710f9e0067",
+    ".github/workflows/ci.yml": "393542f8109cac2611d6ab41b8b062e6cc8be46894379568f15c0b7e2c1a639f",
+    "src/coordinator.py": "83eb5476730f336176a4f1280f2908cd23cb89b62a186ffb3a92b280702d6f00",
+    "src/agent_coordinator.py": "3948608b3a4d83a8de2490e825e8fe5a4d61df377ab068be08315a2929fbdbeb"
+  }
+}
