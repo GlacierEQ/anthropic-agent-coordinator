@@ -65,6 +65,7 @@ jobs:
           if package.DEFAULT_ROLE_CAPS[package.Role.EXPLORE] != 4_000:
               raise SystemExit("installed package exposed the wrong default role capacity")
           PY
+          .wheel-venv/bin/agent-coordinator-verify-readme
           rm -rf .wheel-venv
 
       - name: Verify recruiter, expert, and AI README contract
