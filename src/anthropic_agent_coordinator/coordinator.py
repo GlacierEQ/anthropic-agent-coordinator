@@ -80,14 +80,11 @@ class Task:
             f"task {task_id!r} tokens_est",
         )
 
-        if isinstance(self.deps, (str, bytes)):
-            raise CoordinationError(f"task {task_id!r} dependencies must be a collection of strings")
-        try:
-            raw_dependencies = tuple(self.deps)
-        except TypeError as exc:
+        if isinstance(self.deps, (str, bytes)) or not isinstance(self.deps, Sequence):
             raise CoordinationError(
-                f"task {task_id!r} dependencies must be a collection of strings"
-            ) from exc
+                f"task {task_id!r} dependencies must be an ordered collection of strings"
+            )
+        raw_dependencies = tuple(self.deps)
         if not all(isinstance(dependency, str) for dependency in raw_dependencies):
             raise CoordinationError(f"task {task_id!r} dependencies must be strings")
 
