@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import coordinator as compatibility
 from agent_coordinator import Agent, AgentCoordinator, Task
 
 
@@ -52,3 +53,24 @@ def test_repeated_assignment_of_same_task_is_idempotent() -> None:
     assert second == first
     assert coordinator.agents["code-agent"].current_load == load_after_first
     assert coordinator.get_status()["assignments"] == 1
+
+
+def test_historical_coordinator_exports_and_result_shape_are_preserved() -> None:
+    tasks = [
+        compatibility.Task("discover", "explore", 1_000),
+        compatibility.Task("plan", "plan", 1_000, deps=["discover"]),
+    ]
+
+    result = compatibility.coordinate(tasks, global_budget=3_000)
+
+    assert compatibility.ANSWER == 42
+    assert compatibility.ROLE_CAPS["explore"] == 4_000
+    assert result == {
+        "assignments": [
+            {"task": "discover", "role": "explore", "tokens": 1_000},
+            {"task": "plan", "role": "plan", "tokens": 1_000},
+        ],
+        "used_tokens": 2_000,
+        "deferred": [],
+        "answer": compatibility.ANSWER,
+    }
