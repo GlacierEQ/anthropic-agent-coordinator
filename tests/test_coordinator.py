@@ -166,10 +166,40 @@ def test_dependency_cycles_are_rejected_with_a_trace() -> None:
         build_plan(tasks)
 
 
+def test_deep_acyclic_chain_does_not_depend_on_python_recursion_depth() -> None:
+    task_count = 1_200
+    tasks = tuple(
+        Task(
+            f"task-{index}",
+            Role.EXPLORE,
+            1,
+            deps=(f"task-{index - 1}",) if index else (),
+        )
+        for index in range(task_count)
+    )
+
+    result = build_plan(
+        tasks,
+        global_budget=task_count,
+        role_caps={Role.EXPLORE: task_count},
+    )
+
+    assert result.complete is True
+    assert len(result.assignments) == task_count
+    assert result.assignments[-1].wave == task_count
+
+
 @pytest.mark.parametrize("task_id", ["", "   "])
 def test_empty_task_ids_are_rejected(task_id: str) -> None:
     with pytest.raises(CoordinationError, match="task id must be non-empty"):
         Task(task_id, Role.EXPLORE, 100)
+
+
+def test_non_string_ids_and_dependencies_are_rejected() -> None:
+    with pytest.raises(CoordinationError, match="task id must be a string"):
+        Task(7, Role.EXPLORE, 100)  # type: ignore[arg-type]
+    with pytest.raises(CoordinationError, match="dependencies must be strings"):
+        Task("a", Role.EXPLORE, 100, deps=(7,))  # type: ignore[arg-type]
 
 
 def test_self_and_duplicate_dependencies_are_rejected() -> None:
@@ -177,6 +207,11 @@ def test_self_and_duplicate_dependencies_are_rejected() -> None:
         Task("a", Role.EXPLORE, 100, deps=("a",))
     with pytest.raises(CoordinationError, match="duplicate dependencies"):
         Task("a", Role.EXPLORE, 100, deps=("b", "b"))
+
+
+def test_task_collection_rejects_non_task_values() -> None:
+    with pytest.raises(CoordinationError, match="tasks must contain Task instances"):
+        build_plan(("not-a-task",))  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("value", [0, -1, True, 1.5, "100"])
