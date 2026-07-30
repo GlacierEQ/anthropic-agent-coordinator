@@ -56,13 +56,13 @@ def test_nested_junit_counts_each_testcase_once(tmp_path: Path) -> None:
     report = tmp_path / "nested.xml"
     report.write_text(
         (
-            '<testsuites tests="3">'
-            '<testsuite name="parent" tests="3">'
-            '<testsuite name="child-a" tests="2">'
+            '<testsuites tests="3" failures="1" errors="0" skipped="1">'
+            '<testsuite name="parent" tests="3" failures="1" errors="0" skipped="1">'
+            '<testsuite name="child-a" tests="2" failures="0" errors="0" skipped="1">'
             '<testcase name="pass" />'
             '<testcase name="skip"><skipped /></testcase>'
             "</testsuite>"
-            '<testsuite name="child-b" tests="1">'
+            '<testsuite name="child-b" tests="1" failures="1" errors="0" skipped="0">'
             '<testcase name="fail"><failure /></testcase>'
             "</testsuite>"
             "</testsuite>"
@@ -78,6 +78,25 @@ def test_nested_junit_counts_each_testcase_once(tmp_path: Path) -> None:
         "errors": 0,
         "skipped": 1,
     }
+
+
+def test_junit_rejects_suite_and_testcase_count_mismatch(tmp_path: Path) -> None:
+    report = tmp_path / "mismatch.xml"
+    report.write_text(
+        (
+            '<testsuite name="suite" tests="2" failures="0" errors="0" skipped="0">'
+            '<testcase name="only-case" />'
+            "</testsuite>"
+        ),
+        encoding="utf-8",
+    )
+    receipt_path = tmp_path / "receipt.json"
+
+    receipt = verify_junit(report, receipt_path, pytest_exit_code=0)
+
+    assert receipt["conclusion"] == "FAILED"
+    assert receipt["error_type"] == "ValueError"
+    assert "do not match leaf-suite summaries" in receipt["reason"]
 
 
 def test_verified_junit_writes_positive_count_receipt(tmp_path: Path) -> None:
