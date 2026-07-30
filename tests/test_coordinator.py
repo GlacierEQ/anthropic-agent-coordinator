@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from anthropic_agent_coordinator import (
+    DEFAULT_ROLE_CAPS,
     CoordinationError,
     DeferralReason,
     Role,
@@ -93,6 +94,12 @@ def test_custom_role_capacity_is_applied_without_mutating_defaults() -> None:
 
     assert default_result.deferred[0].reason is DeferralReason.ROLE_CAPACITY
     assert assignment_ids(custom_result) == ["large-review"]
+    assert DEFAULT_ROLE_CAPS[Role.REVIEW] == 2_500
+
+
+def test_default_role_cap_mapping_is_runtime_immutable() -> None:
+    with pytest.raises(TypeError):
+        DEFAULT_ROLE_CAPS[Role.EXPLORE] = 1  # type: ignore[index]
 
 
 def test_global_budget_is_shared_across_roles() -> None:
@@ -130,6 +137,7 @@ def test_result_serialization_is_stable_and_machine_readable() -> None:
     )
 
     assert payload["schema"] == "glaciereq.agent-coordinator.result.v1"
+    assert payload["scheduling_policy"] == "stable_priority"
     assert payload["complete"] is True
     assert payload["assignments"] == [
         {"task": "a", "role": "explore", "tokens": 1_000, "wave": 1},
@@ -189,6 +197,30 @@ def test_deep_acyclic_chain_does_not_depend_on_python_recursion_depth() -> None:
     assert result.assignments[-1].wave == task_count
 
 
+def test_reverse_declared_deep_chain_is_supported_without_recursion() -> None:
+    task_count = 1_200
+    tasks = tuple(
+        Task(
+            f"task-{index}",
+            Role.EXPLORE,
+            1,
+            deps=(f"task-{index - 1}",) if index else (),
+        )
+        for index in reversed(range(task_count))
+    )
+
+    result = build_plan(
+        tasks,
+        global_budget=task_count,
+        role_caps={Role.EXPLORE: task_count},
+    )
+
+    assert result.complete is True
+    assert len(result.assignments) == task_count
+    assert result.assignments[0].task_id == "task-0"
+    assert result.assignments[-1].task_id == f"task-{task_count - 1}"
+
+
 @pytest.mark.parametrize("task_id", ["", "   "])
 def test_empty_task_ids_are_rejected(task_id: str) -> None:
     with pytest.raises(CoordinationError, match="task id must be non-empty"):
@@ -200,6 +232,12 @@ def test_non_string_ids_and_dependencies_are_rejected() -> None:
         Task(7, Role.EXPLORE, 100)  # type: ignore[arg-type]
     with pytest.raises(CoordinationError, match="dependencies must be strings"):
         Task("a", Role.EXPLORE, 100, deps=(7,))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("dependencies", ["discover", b"discover"])
+def test_bare_string_dependency_collections_are_rejected(dependencies: object) -> None:
+    with pytest.raises(CoordinationError, match="collection of strings"):
+        Task("a", Role.EXPLORE, 100, deps=dependencies)  # type: ignore[arg-type]
 
 
 def test_self_and_duplicate_dependencies_are_rejected() -> None:
@@ -228,7 +266,10 @@ def test_invalid_global_budgets_are_rejected(value: object) -> None:
 
 @pytest.mark.parametrize("value", [0, -1, True, 1.5, "100"])
 def test_invalid_role_capacities_are_rejected(value: object) -> None:
-    with pytest.raises(CoordinationError, match="role capacity.*must be positive"):
+    with pytest.raises(
+        CoordinationError,
+        match=r"role capacity.*must be a positive integer",
+    ):
         build_plan(
             (Task("a", Role.EXPLORE, 100),),
             role_caps={Role.EXPLORE: value},  # type: ignore[dict-item]
