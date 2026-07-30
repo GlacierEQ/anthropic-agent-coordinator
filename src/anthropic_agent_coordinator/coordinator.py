@@ -173,26 +173,36 @@ def _validate_tasks(tasks: Sequence[Task]) -> tuple[Task, ...]:
 
     task_by_id = {task.id: task for task in normalized}
     state: dict[str, int] = {}
-    stack: list[str] = []
 
-    def visit(task_id: str) -> None:
-        marker = state.get(task_id, 0)
-        if marker == 2:
-            return
-        if marker == 1:
-            cycle_start = stack.index(task_id)
-            cycle = [*stack[cycle_start:], task_id]
-            raise CoordinationError("dependency cycle: " + " -> ".join(cycle))
+    for start in normalized:
+        if state.get(start.id) == 2:
+            continue
 
-        state[task_id] = 1
-        stack.append(task_id)
-        for dependency in task_by_id[task_id].deps:
-            visit(dependency)
-        stack.pop()
-        state[task_id] = 2
+        stack: list[tuple[str, int]] = [(start.id, 0)]
+        path: list[str] = []
+        while stack:
+            task_id, dependency_index = stack[-1]
+            if state.get(task_id, 0) == 0:
+                state[task_id] = 1
+                path.append(task_id)
 
-    for task in normalized:
-        visit(task.id)
+            dependencies = task_by_id[task_id].deps
+            if dependency_index >= len(dependencies):
+                state[task_id] = 2
+                stack.pop()
+                path.pop()
+                continue
+
+            dependency = dependencies[dependency_index]
+            stack[-1] = (task_id, dependency_index + 1)
+            dependency_state = state.get(dependency, 0)
+            if dependency_state == 0:
+                stack.append((dependency, 0))
+            elif dependency_state == 1:
+                cycle_start = path.index(dependency)
+                cycle = [*path[cycle_start:], dependency]
+                raise CoordinationError("dependency cycle: " + " -> ".join(cycle))
+
     return normalized
 
 
