@@ -41,3 +41,13 @@ def test_unsupported_scheduling_policy_is_rejected() -> None:
             (Task("a", Role.EXPLORE, 1),),
             policy="pack-for-utilization",
         )
+
+
+def test_unordered_dependency_collections_are_rejected() -> None:
+    with pytest.raises(CoordinationError, match="ordered collection of strings"):
+        Task(
+            "dependent",
+            Role.PLAN,
+            1,
+            deps={"first", "second"},  # type: ignore[arg-type]
+        )
