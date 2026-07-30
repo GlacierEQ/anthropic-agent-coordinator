@@ -169,6 +169,23 @@ def test_entity_bearing_junit_is_rejected_before_xml_parsing(tmp_path: Path) -> 
     assert "forbidden DTD or entity declaration" in receipt["reason"]
 
 
+def test_utf16_entity_document_cannot_bypass_encoding_gate(tmp_path: Path) -> None:
+    report = tmp_path / "utf16-entity.xml"
+    xml = (
+        '<?xml version="1.0" encoding="utf-16"?>'
+        '<!DOCTYPE testsuites [<!ENTITY expansion "expanded">]>'
+        '<testsuites><testsuite name="&expansion;" tests="1" '
+        'failures="0" errors="0" skipped="0" /></testsuites>'
+    )
+    report.write_bytes(xml.encode("utf-16"))
+
+    receipt = verify_junit(report, tmp_path / "receipt.json", pytest_exit_code=0)
+
+    assert receipt["conclusion"] == "FAILED"
+    assert receipt["error_type"] == "ValueError"
+    assert "must use UTF-8 XML encoding" in receipt["reason"]
+
+
 def test_oversized_junit_is_rejected_before_xml_parsing(tmp_path: Path) -> None:
     report = tmp_path / "oversized.xml"
     report.write_bytes(b" " * (MAX_JUNIT_BYTES + 1))
