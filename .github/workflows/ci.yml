@@ -1,14 +1,94 @@
-name: CI
+name: Agent Coordinator Verification
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master]
   pull_request:
-    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coordinator-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  ci:
-    uses: GlacierEQ/public-actions-runner-host/.github/workflows/reusable-quick-ci.yml@main
-    with:
-      repo_name: ${{ github.event.repository.name }}
-      language: python
+  verify:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package and verification tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip check
+
+      - name: Lint the complete executable and test surface
+        run: ruff check src tests scripts
+
+      - name: Compile the complete Python surface
+        run: python -m compileall -q src tests scripts
+
+      - name: Build source and wheel distributions
+        run: python -m build --outdir artifacts/dist
+
+      - name: Verify recruiter, expert, and AI README contract
+        run: agent-coordinator-verify-readme
+
+      - name: Run the deterministic coordinator demonstration
+        run: |
+          mkdir -p artifacts
+          agent-coordinate > artifacts/demo.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path("artifacts/demo.json").read_text(encoding="utf-8"))
+          if payload.get("schema") != "glaciereq.agent-coordinator.result.v1":
+              raise SystemExit("demo emitted the wrong result schema")
+          if payload.get("complete") is not True:
+              raise SystemExit("nominal demo did not complete")
+          if payload.get("used_tokens") != 12_000:
+              raise SystemExit("nominal demo token accounting changed")
+          PY
+
+      - name: Run tests and emit JUnit
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          python -m pytest --junitxml=artifacts/pytest.xml
+          status=$?
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Require a positive-count atomic test receipt
+        run: >-
+          python scripts/verify_junit.py
+          --junit artifacts/pytest.xml
+          --pytest-exit-code "${{ steps.tests.outputs.exit_code }}"
+          --output artifacts/test-receipt.json
+
+      - name: Upload verification artifacts
+        if: ${{ always() && hashFiles('artifacts/**/*') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-coordinator-verification-py${{ matrix.python-version }}
+          path: artifacts/
+          if-no-files-found: error
