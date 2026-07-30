@@ -42,10 +42,11 @@ This coordinator converts those decisions into a deterministic, reviewable plan.
 | Open or run | What it demonstrates |
 |---|---|
 | [`src/anthropic_agent_coordinator/coordinator.py`](src/anthropic_agent_coordinator/coordinator.py) | Typed models, graph validation, scheduling policy, and result contract. |
-| [`tests/test_coordinator.py`](tests/test_coordinator.py) | Adversarial budget, dependency, validation, and compatibility tests. |
-| [`tests/test_policy_and_scale.py`](tests/test_policy_and_scale.py) | Explicit priority policy and large-graph behavior. |
+| [`tests/test_coordinator.py`](tests/test_coordinator.py) | Adversarial budget, dependency, validation, and canonical compatibility tests. |
+| [`tests/test_policy_and_scale.py`](tests/test_policy_and_scale.py) | Explicit priority, ordered dependencies, CLI behavior, and large-graph execution. |
+| [`tests/test_legacy_allocator.py`](tests/test_legacy_allocator.py) | Historical module exports, constructor shape, capability matching, and idempotency. |
 | [`tests/test_verification.py`](tests/test_verification.py) | JUnit evidence and portable README regression tests. |
-| [`scripts/verify_junit.py`](scripts/verify_junit.py) | Bounded, hashed, atomic test receipts. |
+| [`scripts/verify_junit.py`](scripts/verify_junit.py) | Bounded, encoding-gated, hashed, atomic test receipts. |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Package, wheel, CLI, documentation, and test verification on Python 3.11–3.13. |
 
 ```bash
@@ -109,7 +110,7 @@ JSON • tests • humans • downstream tools
 | Unique identity | Duplicate task IDs fail before scheduling. |
 | Referential integrity | Unknown dependencies fail before scheduling. |
 | Acyclic graph | Iterative traversal returns a readable cycle trace without recursion-depth limits. |
-| Strict dependency type | Bare strings, bytes, and non-string dependency entries are rejected. |
+| Ordered dependency contract | Sets, generators, bare strings, bytes, and non-string entries are rejected. |
 | Positive resources | Boolean, fractional, string, zero, and negative values are rejected. |
 | Immutable defaults | Public default role capacities cannot be mutated at runtime. |
 | Full-funding completion | Assignment tokens always equal the declared estimate. |
@@ -154,8 +155,9 @@ The wheel gate installs the built artifact into an isolated environment, imports
 
 The receipt schema is `glaciereq.agent-coordinator.test-receipt.v1`.
 
+- Only UTF-8 JUnit XML is accepted; UTF-16, UTF-32, NUL-bearing, and undecodable artifacts fail closed.
 - DTD and entity declarations are rejected before XML parsing.
-- JUnit input is size-bounded.
+- File size is checked before allocation, followed by a bounded read that also detects concurrent growth.
 - Counts and SHA-256 are derived from the same byte snapshot.
 - Testcase outcomes must reconcile with suite summaries.
 - Missing, malformed, failing, or contradictory reports produce `FAILED` evidence.
@@ -167,9 +169,9 @@ The receipt schema is `glaciereq.agent-coordinator.test-receipt.v1`.
 
 | Language / format | Responsibility | Proof |
 |---|---|---|
-| Python 3.11+ | Typed scheduling, validation, CLI, and evidence tooling | Python 3.11–3.13 matrix |
+| Python 3.11+ | Typed scheduling, validation, CLI, compatibility, and evidence tooling | Python 3.11–3.13 matrix |
 | JSON | Coordination output and receipts | Schema assertions and CLI gate |
-| JUnit XML | Interoperable test evidence | Reconciled and SHA-256-bound receipt |
+| JUnit XML | Interoperable UTF-8 test evidence | Reconciled and SHA-256-bound receipt |
 | YAML | Read-only GitHub Actions policy | Repository-native CI |
 | Markdown | Recruiter, engineer, and toolchain contract | Structural README gate |
 
@@ -227,6 +229,7 @@ evidence:
   tests:
     - tests/test_coordinator.py
     - tests/test_policy_and_scale.py
+    - tests/test_legacy_allocator.py
     - tests/test_verification.py
 relationships:
   - target: GlacierEQ/anthropic-safety-monitor
@@ -263,7 +266,7 @@ from anthropic_agent_coordinator import (
 )
 ```
 
-`build_plan` returns `CoordinationResult`; `coordinate` returns the JSON-ready dictionary. `src/coordinator.py` preserves the historical import and script surface and is included in the wheel.
+`build_plan` returns `CoordinationResult`; `coordinate` returns the JSON-ready dictionary. The packaged `coordinator` module preserves the historical `Task(id, kind, tokens_est, deps)` declaration, `ANSWER`, string-keyed `ROLE_CAPS`, the original four-field result shape, and the original module/script name while routing work through the canonical engine.
 
 ### Mesh resources
 
@@ -278,9 +281,9 @@ from anthropic_agent_coordinator import (
 
 ```text
 src/anthropic_agent_coordinator/   canonical typed scheduler and CLI
-src/coordinator.py                 packaged compatibility entry point
-src/agent_coordinator.py           source-only earlier capability experiment
-tests/                             scheduler, policy, scale, and evidence tests
+src/coordinator.py                 packaged historical compatibility module
+src/agent_coordinator.py           source-only capability allocator experiment
+tests/                             canonical, policy, legacy, CLI, and evidence tests
 scripts/                           README and JUnit verification tools
 .github/workflows/ci.yml           repository-native verification matrix
 ```
