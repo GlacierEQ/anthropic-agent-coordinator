@@ -32,6 +32,39 @@ def _integer_attribute(element: ET.Element, name: str) -> int:
     return value
 
 
+def _counts_from_testcases(root: ET.Element) -> dict[str, int] | None:
+    testcases = [element for element in root.iter() if _local_name(element.tag) == "testcase"]
+    if not testcases:
+        return None
+
+    counts = {"tests": len(testcases), "failures": 0, "errors": 0, "skipped": 0}
+    for testcase in testcases:
+        outcomes = {_local_name(child.tag) for child in testcase}
+        if "failure" in outcomes:
+            counts["failures"] += 1
+        elif "error" in outcomes:
+            counts["errors"] += 1
+        elif "skipped" in outcomes:
+            counts["skipped"] += 1
+    return counts
+
+
+def _counts_from_leaf_suites(root: ET.Element) -> dict[str, int]:
+    suites = [element for element in root.iter() if _local_name(element.tag) == "testsuite"]
+    leaf_suites = [
+        suite
+        for suite in suites
+        if not any(_local_name(child.tag) == "testsuite" for child in suite)
+    ]
+    if not leaf_suites:
+        raise ValueError("JUnit document contains no testsuite elements")
+
+    return {
+        name: sum(_integer_attribute(suite, name) for suite in leaf_suites)
+        for name in ("tests", "failures", "errors", "skipped")
+    }
+
+
 def parse_junit_bytes(data: bytes) -> dict[str, int]:
     if len(data) > MAX_JUNIT_BYTES:
         raise ValueError(
@@ -42,17 +75,11 @@ def parse_junit_bytes(data: bytes) -> dict[str, int]:
         raise ValueError("JUnit artifact contains a forbidden DTD or entity declaration")
 
     root = ET.fromstring(data)
-    if _local_name(root.tag) == "testsuite":
-        suites = [root]
-    else:
-        suites = [child for child in root if _local_name(child.tag) == "testsuite"]
-    if not suites:
-        raise ValueError("JUnit document contains no testsuite elements")
-
-    return {
-        name: sum(_integer_attribute(suite, name) for suite in suites)
-        for name in ("tests", "failures", "errors", "skipped")
-    }
+    counts = _counts_from_testcases(root) or _counts_from_leaf_suites(root)
+    if counts["failures"] + counts["errors"] + counts["skipped"] > counts["tests"]:
+        raise ValueError("JUnit outcome counts exceed the declared test count")
+    counts["executed"] = counts["tests"] - counts["skipped"]
+    return counts
 
 
 def parse_junit(path: Path) -> dict[str, int]:
@@ -109,9 +136,9 @@ def verify_junit(
         if pytest_exit_code != 0 or counts["failures"] or counts["errors"]:
             receipt["conclusion"] = "FAILED"
             receipt["reason"] = "pytest or JUnit reported failed or errored tests"
-        elif counts["tests"] <= 0:
+        elif counts["executed"] <= 0:
             receipt["conclusion"] = "UNVERIFIED"
-            receipt["reason"] = "pytest produced no positive test count"
+            receipt["reason"] = "pytest produced no executed, non-skipped tests"
         else:
             receipt["conclusion"] = "VERIFIED"
             receipt["evidence_level"] = "TEST"
@@ -119,6 +146,7 @@ def verify_junit(
         receipt.update(
             {
                 "tests": 0,
+                "executed": 0,
                 "failures": 0,
                 "errors": 1,
                 "skipped": 0,
