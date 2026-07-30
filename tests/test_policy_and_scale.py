@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
+import anthropic_agent_coordinator.__main__ as cli
 from anthropic_agent_coordinator import (
     CoordinationError,
     DeferralReason,
@@ -51,3 +54,30 @@ def test_unordered_dependency_collections_are_rejected() -> None:
             1,
             deps={"first", "second"},  # type: ignore[arg-type]
         )
+
+
+def test_cli_main_emits_valid_result_json(capsys) -> None:
+    exit_code = cli.main()
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert payload["schema"] == "glaciereq.agent-coordinator.result.v1"
+    assert payload["scheduling_policy"] == "stable_priority"
+    assert payload["complete"] is True
+    assert payload["used_tokens"] == 12_000
+
+
+def test_cli_main_reports_coordination_failure(monkeypatch, capsys) -> None:
+    def fail_plan(_tasks):
+        raise CoordinationError("invalid scenario")
+
+    monkeypatch.setattr(cli, "build_plan", fail_plan)
+
+    exit_code = cli.main()
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert captured.out == ""
+    assert captured.err == "coordination failed: invalid scenario\n"
