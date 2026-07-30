@@ -1,18 +1,25 @@
 from __future__ import annotations
 
 import json
+import sys
 
-from .coordinator import Role, Task, build_plan
+from .coordinator import CoordinationError, Role, Task, build_plan
 
 
 def main() -> int:
-    tasks = (
-        Task("discover", Role.EXPLORE, 3_000),
-        Task("design", Role.PLAN, 2_000, deps=("discover",)),
-        Task("implement", Role.IMPLEMENT, 6_000, deps=("design",)),
-        Task("review", Role.REVIEW, 1_000, deps=("implement",)),
-    )
-    print(json.dumps(build_plan(tasks).to_dict(), indent=2, sort_keys=True))
+    try:
+        tasks = (
+            Task("discover", Role.EXPLORE, 3_000),
+            Task("design", Role.PLAN, 2_000, deps=("discover",)),
+            Task("implement", Role.IMPLEMENT, 6_000, deps=("design",)),
+            Task("review", Role.REVIEW, 1_000, deps=("implement",)),
+        )
+        result = build_plan(tasks)
+    except CoordinationError as exc:
+        print(f"coordination failed: {exc}", file=sys.stderr)
+        return 2
+
+    print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
     return 0
 
 
