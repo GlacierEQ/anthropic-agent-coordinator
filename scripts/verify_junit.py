@@ -10,8 +10,11 @@ import time
 import xml.etree.ElementTree as ET
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Final
 
-RECEIPT_SCHEMA = "glaciereq.agent-coordinator.test-receipt.v1"
+RECEIPT_SCHEMA: Final = "glaciereq.agent-coordinator.test-receipt.v1"
+MAX_JUNIT_BYTES: Final = 10 * 1024 * 1024
+FORBIDDEN_XML_DECLARATIONS: Final = (b"<!DOCTYPE", b"<!ENTITY")
 
 
 def _local_name(tag: str) -> str:
@@ -29,8 +32,16 @@ def _integer_attribute(element: ET.Element, name: str) -> int:
     return value
 
 
-def parse_junit(path: Path) -> dict[str, int]:
-    root = ET.parse(path).getroot()
+def parse_junit_bytes(data: bytes) -> dict[str, int]:
+    if len(data) > MAX_JUNIT_BYTES:
+        raise ValueError(
+            f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit"
+        )
+    normalized = data.upper()
+    if any(declaration in normalized for declaration in FORBIDDEN_XML_DECLARATIONS):
+        raise ValueError("JUnit artifact contains a forbidden DTD or entity declaration")
+
+    root = ET.fromstring(data)
     if _local_name(root.tag) == "testsuite":
         suites = [root]
     else:
@@ -42,6 +53,10 @@ def parse_junit(path: Path) -> dict[str, int]:
         name: sum(_integer_attribute(suite, name) for suite in suites)
         for name in ("tests", "failures", "errors", "skipped")
     }
+
+
+def parse_junit(path: Path) -> dict[str, int]:
+    return parse_junit_bytes(path.read_bytes())
 
 
 def atomic_write_json(path: Path, payload: dict[str, object]) -> None:
@@ -87,7 +102,7 @@ def verify_junit(
         if not junit_path.is_file():
             raise FileNotFoundError(f"JUnit artifact does not exist: {junit_path}")
         junit_bytes = junit_path.read_bytes()
-        counts = parse_junit(junit_path)
+        counts = parse_junit_bytes(junit_bytes)
         receipt.update(counts)
         receipt["junit_sha256"] = hashlib.sha256(junit_bytes).hexdigest()
 
