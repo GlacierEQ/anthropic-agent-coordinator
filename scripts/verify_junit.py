@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import codecs
 import hashlib
 import json
 import os
@@ -14,7 +15,13 @@ from typing import Final
 
 RECEIPT_SCHEMA: Final = "glaciereq.agent-coordinator.test-receipt.v1"
 MAX_JUNIT_BYTES: Final = 10 * 1024 * 1024
-FORBIDDEN_XML_DECLARATIONS: Final = (b"<!DOCTYPE", b"<!ENTITY")
+FORBIDDEN_XML_DECLARATIONS: Final = ("<!DOCTYPE", "<!ENTITY")
+UNSUPPORTED_XML_BOMS: Final = (
+    codecs.BOM_UTF16_LE,
+    codecs.BOM_UTF16_BE,
+    codecs.BOM_UTF32_LE,
+    codecs.BOM_UTF32_BE,
+)
 COUNT_FIELDS: Final = ("tests", "failures", "errors", "skipped")
 
 
@@ -82,16 +89,46 @@ def _reconcile_counts(
         )
 
 
+def read_bounded_junit(path: Path) -> bytes:
+    """Read at most the supported JUnit size, including concurrent-growth defense."""
+
+    size = path.stat().st_size
+    if size > MAX_JUNIT_BYTES:
+        raise ValueError(
+            f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit"
+        )
+
+    with path.open("rb") as handle:
+        data = handle.read(MAX_JUNIT_BYTES + 1)
+    if len(data) > MAX_JUNIT_BYTES:
+        raise ValueError(
+            f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit"
+        )
+    return data
+
+
+def _decode_supported_xml(data: bytes) -> str:
+    if data.startswith(UNSUPPORTED_XML_BOMS) or b"\x00" in data:
+        raise ValueError("JUnit artifact must use UTF-8 XML encoding")
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValueError("JUnit artifact must use UTF-8 XML encoding") from exc
+
+    normalized = text.upper()
+    if any(declaration in normalized for declaration in FORBIDDEN_XML_DECLARATIONS):
+        raise ValueError("JUnit artifact contains a forbidden DTD or entity declaration")
+    return text
+
+
 def parse_junit_bytes(data: bytes) -> dict[str, int]:
     if len(data) > MAX_JUNIT_BYTES:
         raise ValueError(
             f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit"
         )
-    normalized = data.upper()
-    if any(declaration in normalized for declaration in FORBIDDEN_XML_DECLARATIONS):
-        raise ValueError("JUnit artifact contains a forbidden DTD or entity declaration")
 
-    root = ET.fromstring(data)
+    xml_text = _decode_supported_xml(data)
+    root = ET.fromstring(xml_text)
     suite_counts = _counts_from_leaf_suites(root)
     testcase_counts = _counts_from_testcases(root)
     if testcase_counts is not None:
@@ -107,7 +144,7 @@ def parse_junit_bytes(data: bytes) -> dict[str, int]:
 
 
 def parse_junit(path: Path) -> dict[str, int]:
-    return parse_junit_bytes(path.read_bytes())
+    return parse_junit_bytes(read_bounded_junit(path))
 
 
 def atomic_write_json(path: Path, payload: dict[str, object]) -> None:
@@ -152,7 +189,7 @@ def verify_junit(
     try:
         if not junit_path.is_file():
             raise FileNotFoundError(f"JUnit artifact does not exist: {junit_path}")
-        junit_bytes = junit_path.read_bytes()
+        junit_bytes = read_bounded_junit(junit_path)
         counts = parse_junit_bytes(junit_bytes)
         receipt.update(counts)
         receipt["junit_sha256"] = hashlib.sha256(junit_bytes).hexdigest()
