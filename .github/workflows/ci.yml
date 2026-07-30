@@ -2,7 +2,7 @@ name: Agent Coordinator Verification
 
 on:
   push:
-    branches: [master]
+    branches: [master, "wave-1/**"]
   pull_request:
 
 permissions:
