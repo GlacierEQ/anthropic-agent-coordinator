@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final, Mapping, Sequence
@@ -32,6 +33,12 @@ DEFAULT_ROLE_CAPS: Final[dict[Role, int]] = {
 }
 
 
+def _require_positive_integer(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise CoordinationError(f"{label} must be a positive integer")
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class Task:
     id: str
@@ -40,17 +47,24 @@ class Task:
     deps: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
+        if not isinstance(self.id, str):
+            raise CoordinationError("task id must be a string")
         task_id = self.id.strip()
         if not task_id:
             raise CoordinationError("task id must be non-empty")
         try:
             role = self.role if isinstance(self.role, Role) else Role(self.role)
-        except ValueError as exc:
+        except (TypeError, ValueError) as exc:
             raise CoordinationError(f"task {task_id!r} has unsupported role {self.role!r}") from exc
-        if isinstance(self.tokens_est, bool) or self.tokens_est <= 0:
-            raise CoordinationError(f"task {task_id!r} tokens_est must be a positive integer")
+        tokens_est = _require_positive_integer(
+            self.tokens_est,
+            f"task {task_id!r} tokens_est",
+        )
 
-        dependencies = tuple(dependency.strip() for dependency in self.deps)
+        try:
+            dependencies = tuple(dependency.strip() for dependency in self.deps)
+        except (AttributeError, TypeError) as exc:
+            raise CoordinationError(f"task {task_id!r} dependencies must be strings") from exc
         if any(not dependency for dependency in dependencies):
             raise CoordinationError(f"task {task_id!r} contains an empty dependency id")
         if len(set(dependencies)) != len(dependencies):
@@ -60,6 +74,7 @@ class Task:
 
         object.__setattr__(self, "id", task_id)
         object.__setattr__(self, "role", role)
+        object.__setattr__(self, "tokens_est", tokens_est)
         object.__setattr__(self, "deps", dependencies)
 
 
@@ -134,15 +149,17 @@ class CoordinationResult:
 
 def _validate_tasks(tasks: Sequence[Task]) -> tuple[Task, ...]:
     normalized = tuple(tasks)
+    if not all(isinstance(task, Task) for task in normalized):
+        raise CoordinationError("tasks must contain Task instances")
     if not normalized:
         return normalized
 
-    ids = [task.id for task in normalized]
-    duplicates = sorted({task_id for task_id in ids if ids.count(task_id) > 1})
+    counts = Counter(task.id for task in normalized)
+    duplicates = sorted(task_id for task_id, count in counts.items() if count > 1)
     if duplicates:
         raise CoordinationError(f"duplicate task ids: {duplicates}")
 
-    known = set(ids)
+    known = set(counts)
     unknown = sorted(
         {
             dependency
@@ -184,14 +201,15 @@ def _normalize_role_caps(role_caps: Mapping[Role | str, int] | None) -> dict[Rol
     if role_caps is None:
         return normalized
 
-    for raw_role, capacity in role_caps.items():
+    for raw_role, raw_capacity in role_caps.items():
         try:
             role = raw_role if isinstance(raw_role, Role) else Role(raw_role)
-        except ValueError as exc:
+        except (TypeError, ValueError) as exc:
             raise CoordinationError(f"unsupported role capacity key: {raw_role!r}") from exc
-        if isinstance(capacity, bool) or capacity <= 0:
-            raise CoordinationError(f"role capacity for {role.value!r} must be positive")
-        normalized[role] = capacity
+        normalized[role] = _require_positive_integer(
+            raw_capacity,
+            f"role capacity for {role.value!r}",
+        )
     return normalized
 
 
@@ -208,9 +226,7 @@ def build_plan(
     for its role. Deferred prerequisites never unlock downstream work.
     """
 
-    if isinstance(global_budget, bool) or global_budget <= 0:
-        raise CoordinationError("global_budget must be a positive integer")
-
+    budget = _require_positive_integer(global_budget, "global_budget")
     ordered_tasks = _validate_tasks(tasks)
     caps = _normalize_role_caps(role_caps)
     usage = {role: 0 for role in Role}
@@ -233,7 +249,7 @@ def build_plan(
         wave += 1
         for task in ready:
             pending.pop(task.id)
-            remaining_global = global_budget - used_tokens
+            remaining_global = budget - used_tokens
             remaining_role = caps[task.role] - usage[task.role]
 
             if task.tokens_est > remaining_global:
@@ -285,7 +301,7 @@ def build_plan(
                 tokens_est=task.tokens_est,
                 reason=DeferralReason.DEPENDENCY_NOT_COMPLETED,
                 blocking_dependencies=blocking,
-                remaining_global_budget=global_budget - used_tokens,
+                remaining_global_budget=budget - used_tokens,
                 remaining_role_capacity=caps[task.role] - usage[task.role],
             )
         )
@@ -294,7 +310,7 @@ def build_plan(
         assignments=tuple(assignments),
         deferred=tuple(deferred),
         used_tokens=used_tokens,
-        global_budget=global_budget,
+        global_budget=budget,
         role_usage=tuple((role, usage[role]) for role in Role),
         role_caps=tuple((role, caps[role]) for role in Role),
     )
