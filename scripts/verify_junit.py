@@ -15,6 +15,7 @@ from typing import Final
 RECEIPT_SCHEMA: Final = "glaciereq.agent-coordinator.test-receipt.v1"
 MAX_JUNIT_BYTES: Final = 10 * 1024 * 1024
 FORBIDDEN_XML_DECLARATIONS: Final = (b"<!DOCTYPE", b"<!ENTITY")
+COUNT_FIELDS: Final = ("tests", "failures", "errors", "skipped")
 
 
 def _local_name(tag: str) -> str:
@@ -61,8 +62,24 @@ def _counts_from_leaf_suites(root: ET.Element) -> dict[str, int]:
 
     return {
         name: sum(_integer_attribute(suite, name) for suite in leaf_suites)
-        for name in ("tests", "failures", "errors", "skipped")
+        for name in COUNT_FIELDS
     }
+
+
+def _reconcile_counts(
+    testcase_counts: dict[str, int],
+    suite_counts: dict[str, int],
+) -> None:
+    mismatches = {
+        field: {"testcases": testcase_counts[field], "suites": suite_counts[field]}
+        for field in COUNT_FIELDS
+        if testcase_counts[field] != suite_counts[field]
+    }
+    if mismatches:
+        raise ValueError(
+            "JUnit testcase outcomes do not match leaf-suite summaries: "
+            + json.dumps(mismatches, sort_keys=True)
+        )
 
 
 def parse_junit_bytes(data: bytes) -> dict[str, int]:
@@ -75,7 +92,14 @@ def parse_junit_bytes(data: bytes) -> dict[str, int]:
         raise ValueError("JUnit artifact contains a forbidden DTD or entity declaration")
 
     root = ET.fromstring(data)
-    counts = _counts_from_testcases(root) or _counts_from_leaf_suites(root)
+    suite_counts = _counts_from_leaf_suites(root)
+    testcase_counts = _counts_from_testcases(root)
+    if testcase_counts is not None:
+        _reconcile_counts(testcase_counts, suite_counts)
+        counts = testcase_counts
+    else:
+        counts = suite_counts
+
     if counts["failures"] + counts["errors"] + counts["skipped"] > counts["tests"]:
         raise ValueError("JUnit outcome counts exceed the declared test count")
     counts["executed"] = counts["tests"] - counts["skipped"]
