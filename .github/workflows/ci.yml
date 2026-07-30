@@ -48,8 +48,27 @@ jobs:
       - name: Build source and wheel distributions
         run: python -m build --outdir artifacts/dist
 
+      - name: Verify the built wheel in isolation
+        shell: bash
+        run: |
+          wheel="$(find artifacts/dist -maxdepth 1 -name '*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m venv .wheel-venv
+          .wheel-venv/bin/python -m pip install --upgrade pip
+          .wheel-venv/bin/python -m pip install "$wheel"
+          .wheel-venv/bin/python - <<'PY'
+          import coordinator
+          import anthropic_agent_coordinator as package
+
+          if coordinator.SchedulingPolicy.STABLE_PRIORITY.value != "stable_priority":
+              raise SystemExit("compatibility module omitted the scheduling policy")
+          if package.DEFAULT_ROLE_CAPS[package.Role.EXPLORE] != 4_000:
+              raise SystemExit("installed package exposed the wrong default role capacity")
+          PY
+          rm -rf .wheel-venv
+
       - name: Verify recruiter, expert, and AI README contract
-        run: agent-coordinator-verify-readme
+        run: python scripts/verify_readme_contract.py
 
       - name: Run the deterministic coordinator demonstration
         run: |
@@ -62,6 +81,8 @@ jobs:
           payload = json.loads(Path("artifacts/demo.json").read_text(encoding="utf-8"))
           if payload.get("schema") != "glaciereq.agent-coordinator.result.v1":
               raise SystemExit("demo emitted the wrong result schema")
+          if payload.get("scheduling_policy") != "stable_priority":
+              raise SystemExit("demo emitted the wrong scheduling policy")
           if payload.get("complete") is not True:
               raise SystemExit("nominal demo did not complete")
           if payload.get("used_tokens") != 12_000:
