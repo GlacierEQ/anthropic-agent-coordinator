@@ -45,6 +45,35 @@ def test_parse_junit_aggregates_direct_suites(tmp_path: Path) -> None:
 
     assert parse_junit(report) == {
         "tests": 5,
+        "executed": 4,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 1,
+    }
+
+
+def test_nested_junit_counts_each_testcase_once(tmp_path: Path) -> None:
+    report = tmp_path / "nested.xml"
+    report.write_text(
+        (
+            '<testsuites tests="3">'
+            '<testsuite name="parent" tests="3">'
+            '<testsuite name="child-a" tests="2">'
+            '<testcase name="pass" />'
+            '<testcase name="skip"><skipped /></testcase>'
+            "</testsuite>"
+            '<testsuite name="child-b" tests="1">'
+            '<testcase name="fail"><failure /></testcase>'
+            "</testsuite>"
+            "</testsuite>"
+            "</testsuites>"
+        ),
+        encoding="utf-8",
+    )
+
+    assert parse_junit(report) == {
+        "tests": 3,
+        "executed": 2,
         "failures": 1,
         "errors": 0,
         "skipped": 1,
@@ -61,6 +90,7 @@ def test_verified_junit_writes_positive_count_receipt(tmp_path: Path) -> None:
     assert receipt["conclusion"] == "VERIFIED"
     assert receipt["evidence_level"] == "TEST"
     assert receipt["tests"] == 7
+    assert receipt["executed"] == 6
     assert receipt["skipped"] == 1
     assert len(receipt["junit_sha256"]) == 64
     assert json.loads(receipt_path.read_text(encoding="utf-8")) == receipt
@@ -75,6 +105,19 @@ def test_zero_test_junit_remains_unverified(tmp_path: Path) -> None:
 
     assert receipt["conclusion"] == "UNVERIFIED"
     assert receipt["tests"] == 0
+    assert receipt["executed"] == 0
+
+
+def test_all_skipped_junit_does_not_establish_test_evidence(tmp_path: Path) -> None:
+    report = tmp_path / "skipped.xml"
+    receipt_path = tmp_path / "receipt.json"
+    write_junit(report, tests=4, skipped=4)
+
+    receipt = verify_junit(report, receipt_path, pytest_exit_code=0)
+
+    assert receipt["conclusion"] == "UNVERIFIED"
+    assert receipt["tests"] == 4
+    assert receipt["executed"] == 0
 
 
 def test_pytest_or_junit_failure_produces_failed_receipt(tmp_path: Path) -> None:
@@ -160,9 +203,12 @@ def test_readme_contract_accepts_portable_ordered_document(tmp_path: Path) -> No
 
 def test_readme_contract_rejects_wrong_order_and_local_paths(tmp_path: Path) -> None:
     readme = tmp_path / "README.md"
-    local_path = "C:" + "\\" + "Users" + "\\" + "casey" + "\\repo"
+    windows_path = "C:" + "\\" + "Users" + "\\" + "casey" + "\\repo"
     readme.write_text(
-        "\n".join((*reversed(HEADINGS), *REQUIRED_EVIDENCE, local_path)) + "\n",
+        "\n".join(
+            (*reversed(HEADINGS), *REQUIRED_EVIDENCE, windows_path, "/home/casey/repo")
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -170,3 +216,15 @@ def test_readme_contract_rejects_wrong_order_and_local_paths(tmp_path: Path) -> 
 
     assert "audience headings are out of order" in errors
     assert "README exposes a machine-local path" in errors
+
+
+def test_headings_inside_fenced_code_do_not_satisfy_contract(tmp_path: Path) -> None:
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "\n".join(("```markdown", *HEADINGS, "```", *REQUIRED_EVIDENCE)) + "\n",
+        encoding="utf-8",
+    )
+
+    errors = verify_readme(readme)
+
+    assert any(error.startswith("missing required audience headings") for error in errors)
