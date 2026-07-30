@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Final, Mapping, Sequence
+from types import MappingProxyType
+from typing import Final
 
 RESULT_SCHEMA: Final = "glaciereq.agent-coordinator.result.v1"
 
@@ -25,18 +27,33 @@ class DeferralReason(StrEnum):
     DEPENDENCY_NOT_COMPLETED = "dependency_not_completed"
 
 
-DEFAULT_ROLE_CAPS: Final[dict[Role, int]] = {
-    Role.EXPLORE: 4_000,
-    Role.PLAN: 3_000,
-    Role.IMPLEMENT: 8_000,
-    Role.REVIEW: 2_500,
-}
+class SchedulingPolicy(StrEnum):
+    """Supported deterministic task-order policies."""
+
+    STABLE_PRIORITY = "stable_priority"
+
+
+DEFAULT_ROLE_CAPS: Final[Mapping[Role, int]] = MappingProxyType(
+    {
+        Role.EXPLORE: 4_000,
+        Role.PLAN: 3_000,
+        Role.IMPLEMENT: 8_000,
+        Role.REVIEW: 2_500,
+    }
+)
 
 
 def _require_positive_integer(value: object, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise CoordinationError(f"{label} must be a positive integer")
     return value
+
+
+def _normalize_policy(policy: SchedulingPolicy | str) -> SchedulingPolicy:
+    try:
+        return policy if isinstance(policy, SchedulingPolicy) else SchedulingPolicy(policy)
+    except (TypeError, ValueError) as exc:
+        raise CoordinationError(f"unsupported scheduling policy: {policy!r}") from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,19 +69,29 @@ class Task:
         task_id = self.id.strip()
         if not task_id:
             raise CoordinationError("task id must be non-empty")
+
         try:
             role = self.role if isinstance(self.role, Role) else Role(self.role)
         except (TypeError, ValueError) as exc:
             raise CoordinationError(f"task {task_id!r} has unsupported role {self.role!r}") from exc
+
         tokens_est = _require_positive_integer(
             self.tokens_est,
             f"task {task_id!r} tokens_est",
         )
 
+        if isinstance(self.deps, (str, bytes)):
+            raise CoordinationError(f"task {task_id!r} dependencies must be a collection of strings")
         try:
-            dependencies = tuple(dependency.strip() for dependency in self.deps)
-        except (AttributeError, TypeError) as exc:
-            raise CoordinationError(f"task {task_id!r} dependencies must be strings") from exc
+            raw_dependencies = tuple(self.deps)
+        except TypeError as exc:
+            raise CoordinationError(
+                f"task {task_id!r} dependencies must be a collection of strings"
+            ) from exc
+        if not all(isinstance(dependency, str) for dependency in raw_dependencies):
+            raise CoordinationError(f"task {task_id!r} dependencies must be strings")
+
+        dependencies = tuple(dependency.strip() for dependency in raw_dependencies)
         if any(not dependency for dependency in dependencies):
             raise CoordinationError(f"task {task_id!r} contains an empty dependency id")
         if len(set(dependencies)) != len(dependencies):
@@ -124,6 +151,7 @@ class CoordinationResult:
     global_budget: int
     role_usage: tuple[tuple[Role, int], ...]
     role_caps: tuple[tuple[Role, int], ...]
+    scheduling_policy: SchedulingPolicy
 
     @property
     def complete(self) -> bool:
@@ -136,6 +164,7 @@ class CoordinationResult:
     def to_dict(self) -> dict[str, object]:
         return {
             "schema": RESULT_SCHEMA,
+            "scheduling_policy": self.scheduling_policy.value,
             "complete": self.complete,
             "global_budget": self.global_budget,
             "used_tokens": self.used_tokens,
@@ -180,10 +209,12 @@ def _validate_tasks(tasks: Sequence[Task]) -> tuple[Task, ...]:
 
         stack: list[tuple[str, int]] = [(start.id, 0)]
         path: list[str] = []
+        path_positions: dict[str, int] = {}
         while stack:
             task_id, dependency_index = stack[-1]
             if state.get(task_id, 0) == 0:
                 state[task_id] = 1
+                path_positions[task_id] = len(path)
                 path.append(task_id)
 
             dependencies = task_by_id[task_id].deps
@@ -191,6 +222,7 @@ def _validate_tasks(tasks: Sequence[Task]) -> tuple[Task, ...]:
                 state[task_id] = 2
                 stack.pop()
                 path.pop()
+                path_positions.pop(task_id)
                 continue
 
             dependency = dependencies[dependency_index]
@@ -199,7 +231,7 @@ def _validate_tasks(tasks: Sequence[Task]) -> tuple[Task, ...]:
             if dependency_state == 0:
                 stack.append((dependency, 0))
             elif dependency_state == 1:
-                cycle_start = path.index(dependency)
+                cycle_start = path_positions[dependency]
                 cycle = [*path[cycle_start:], dependency]
                 raise CoordinationError("dependency cycle: " + " -> ".join(cycle))
 
@@ -228,37 +260,43 @@ def build_plan(
     *,
     global_budget: int = 12_000,
     role_caps: Mapping[Role | str, int] | None = None,
+    policy: SchedulingPolicy | str = SchedulingPolicy.STABLE_PRIORITY,
 ) -> CoordinationResult:
-    """Build a deterministic plan without treating partial funding as completion.
+    """Build a deterministic full-funding plan under explicit stable priority.
 
-    Tasks are processed in stable input order. A task is assigned only when its full
-    estimate fits both the remaining global budget and the remaining aggregate capacity
-    for its role. Deferred prerequisites never unlock downstream work.
+    Declaration order is the priority order among tasks that become ready in the
+    same wave. Tasks are assigned only when their full estimate fits both the
+    remaining global budget and aggregate role capacity. Deferred prerequisites
+    never unlock downstream work.
     """
 
     budget = _require_positive_integer(global_budget, "global_budget")
+    scheduling_policy = _normalize_policy(policy)
     ordered_tasks = _validate_tasks(tasks)
     caps = _normalize_role_caps(role_caps)
     usage = {role: 0 for role in Role}
-    pending = {task.id: task for task in ordered_tasks}
+    task_by_id = {task.id: task for task in ordered_tasks}
+    input_index = {task.id: index for index, task in enumerate(ordered_tasks)}
+    unresolved_dependencies = {task.id: len(task.deps) for task in ordered_tasks}
+    dependents: dict[str, list[str]] = {task.id: [] for task in ordered_tasks}
+    for task in ordered_tasks:
+        for dependency in task.deps:
+            dependents[dependency].append(task.id)
+
+    ready = [task.id for task in ordered_tasks if not task.deps]
+    pending = set(task_by_id)
     completed: set[str] = set()
     assignments: list[Assignment] = []
     deferred: list[DeferredTask] = []
     used_tokens = 0
     wave = 0
 
-    while pending:
-        ready = [
-            task
-            for task in ordered_tasks
-            if task.id in pending and all(dependency in completed for dependency in task.deps)
-        ]
-        if not ready:
-            break
-
+    while ready:
         wave += 1
-        for task in ready:
-            pending.pop(task.id)
+        next_ready: list[str] = []
+        for task_id in ready:
+            task = task_by_id[task_id]
+            pending.remove(task_id)
             remaining_global = budget - used_tokens
             remaining_role = caps[task.role] - usage[task.role]
 
@@ -300,6 +338,13 @@ def build_plan(
             usage[task.role] += task.tokens_est
             completed.add(task.id)
 
+            for dependent_id in dependents[task.id]:
+                unresolved_dependencies[dependent_id] -= 1
+                if unresolved_dependencies[dependent_id] == 0:
+                    next_ready.append(dependent_id)
+
+        ready = sorted(next_ready, key=input_index.__getitem__)
+
     for task in ordered_tasks:
         if task.id not in pending:
             continue
@@ -323,6 +368,7 @@ def build_plan(
         global_budget=budget,
         role_usage=tuple((role, usage[role]) for role in Role),
         role_caps=tuple((role, caps[role]) for role in Role),
+        scheduling_policy=scheduling_policy,
     )
 
 
@@ -331,7 +377,13 @@ def coordinate(
     global_budget: int = 12_000,
     *,
     role_caps: Mapping[Role | str, int] | None = None,
+    policy: SchedulingPolicy | str = SchedulingPolicy.STABLE_PRIORITY,
 ) -> dict[str, object]:
     """Compatibility wrapper returning the machine-readable result dictionary."""
 
-    return build_plan(tasks, global_budget=global_budget, role_caps=role_caps).to_dict()
+    return build_plan(
+        tasks,
+        global_budget=global_budget,
+        role_caps=role_caps,
+        policy=policy,
+    ).to_dict()
