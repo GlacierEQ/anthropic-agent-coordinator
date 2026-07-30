@@ -45,15 +45,20 @@ class AgentCoordinator:
         self.agents[agent.agent_id] = agent
 
     def assign_task(self, task: Task) -> str | None:
+        existing_assignment = self._assignments.get(task.task_id)
+        if existing_assignment is not None:
+            return existing_assignment
+
+        required = set(task.required_capabilities)
         candidates: list[tuple[str, float]] = []
         for agent_id, agent in self.agents.items():
             if not agent.can_accept_work or agent.available_capacity < task.estimated_load:
                 continue
 
-            capability_matches = len(
-                set(task.required_capabilities) & set(agent.capabilities)
-            )
-            capability_ratio = capability_matches / max(len(task.required_capabilities), 1)
+            capability_matches = len(required & set(agent.capabilities))
+            if required and capability_matches == 0:
+                continue
+            capability_ratio = 1.0 if not required else capability_matches / len(required)
             remaining_ratio = 1 - agent.current_load / agent.max_load
             score = capability_ratio * agent.trust_score * remaining_ratio
             candidates.append((agent_id, score))
