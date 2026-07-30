@@ -3,7 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.verify_junit import atomic_write_json, parse_junit, verify_junit
+from scripts.verify_junit import (
+    MAX_JUNIT_BYTES,
+    atomic_write_json,
+    parse_junit,
+    verify_junit,
+)
 from scripts.verify_readme_contract import HEADINGS, REQUIRED_EVIDENCE, verify_readme
 
 
@@ -99,6 +104,38 @@ def test_missing_or_invalid_junit_still_writes_failed_evidence(tmp_path: Path) -
 
     assert invalid_result["conclusion"] == "FAILED"
     assert invalid_result["error_type"] == "ParseError"
+
+
+def test_entity_bearing_junit_is_rejected_before_xml_parsing(tmp_path: Path) -> None:
+    report = tmp_path / "entity.xml"
+    report.write_text(
+        (
+            '<?xml version="1.0"?>'
+            '<!DOCTYPE testsuites [<!ENTITY expansion "expanded">]>'
+            '<testsuites><testsuite name="&expansion;" tests="1" '
+            'failures="0" errors="0" skipped="0" /></testsuites>'
+        ),
+        encoding="utf-8",
+    )
+    receipt_path = tmp_path / "receipt.json"
+
+    receipt = verify_junit(report, receipt_path, pytest_exit_code=0)
+
+    assert receipt["conclusion"] == "FAILED"
+    assert receipt["error_type"] == "ValueError"
+    assert "forbidden DTD or entity declaration" in receipt["reason"]
+
+
+def test_oversized_junit_is_rejected_before_xml_parsing(tmp_path: Path) -> None:
+    report = tmp_path / "oversized.xml"
+    report.write_bytes(b" " * (MAX_JUNIT_BYTES + 1))
+    receipt_path = tmp_path / "receipt.json"
+
+    receipt = verify_junit(report, receipt_path, pytest_exit_code=0)
+
+    assert receipt["conclusion"] == "FAILED"
+    assert receipt["error_type"] == "ValueError"
+    assert "verification limit" in receipt["reason"]
 
 
 def test_atomic_write_replaces_stale_success(tmp_path: Path) -> None:
