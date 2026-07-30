@@ -94,9 +94,20 @@ def verify_readme(path: Path) -> tuple[str, ...]:
     return tuple(errors)
 
 
+def resolve_readme() -> Path:
+    repository_readme = Path(__file__).resolve().parents[1] / "README.md"
+    if repository_readme.is_file():
+        return repository_readme
+
+    packaged_readme = Path(__file__).resolve().with_name("README.md")
+    if packaged_readme.is_file():
+        return packaged_readme
+
+    raise FileNotFoundError("README.md is unavailable in repository and installed contexts")
+
+
 def main() -> int:
-    repository_root = Path(__file__).resolve().parents[1]
-    errors = verify_readme(repository_root / "README.md")
+    errors = verify_readme(resolve_readme())
     if errors:
         raise SystemExit("README contract failed: " + "; ".join(errors))
     print("Agent Coordinator README contract verified")
