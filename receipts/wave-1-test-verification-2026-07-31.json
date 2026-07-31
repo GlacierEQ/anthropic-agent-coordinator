@@ -1,0 +1,53 @@
+{
+  "schema": "glaciereq.agent-coordinator.promotion-receipt.v1",
+  "repository": "GlacierEQ/anthropic-agent-coordinator",
+  "canonical_branch": "master",
+  "verified_executable_commit": "87438f57bdfd2cb380730cf51140611963d7c95b",
+  "clean_candidate_commit": "7c7cfc3fcd403e497085387415d9766fe98b7478",
+  "status": "VERIFIED_AT_TEST_EVIDENCE",
+  "evidence_level": "TEST",
+  "verification_environment": {
+    "kind": "local_exact_repository_reconstruction",
+    "python": "3.13.5",
+    "source_files_matched_to_candidate": true,
+    "network_required": false
+  },
+  "proof": {
+    "tests_collected": 62,
+    "tests_executed": 62,
+    "tests_passed": 62,
+    "tests_failed": 0,
+    "tests_errored": 0,
+    "tests_skipped": 0,
+    "receipt_conclusion": "VERIFIED",
+    "receipt_evidence_level": "TEST",
+    "junit_sha256": "2d0b8ba5cbc14f31bd58297f41f55ef46149f5748fbe89885caefc9c5d4ad340"
+  },
+  "verified_scope": [
+    "deterministic dependency-aware scheduling",
+    "global and aggregate role budgets",
+    "full-funding assignment semantics",
+    "dependency and cycle validation",
+    "legacy coordinator compatibility",
+    "CLI and machine result schemas",
+    "positive-count JUnit evidence behavior",
+    "README contract behavior"
+  ],
+  "blocked": [
+    {
+      "state": "BLOCKED_ACTIONS_EXECUTION",
+      "scope": "hosted Python 3.11, 3.12, and 3.13 matrix",
+      "evidence": "No workflow run attached to repaired master commits, the reviewed PR head, or the non-executable synchronization trigger."
+    }
+  ],
+  "nonclaims": {
+    "python_3_11_hosted_verified": false,
+    "python_3_12_hosted_verified": false,
+    "python_3_13_hosted_verified": false,
+    "cross_version_matrix_verified": false,
+    "agent_execution_implemented": false,
+    "provider_calls_implemented": false,
+    "production_scale_verified": false,
+    "deployment_verified": false
+  }
+}
