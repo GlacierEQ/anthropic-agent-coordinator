@@ -1,4 +1,0 @@
-Purpose: trigger the repository-native Python 3.11, 3.12, and 3.13 matrix after the canonical master branch filter repair.
-Executable impact: none.
-Candidate executable parent: 87438f57bdfd2cb380730cf51140611963d7c95b
-Promotion rule: remove this trigger before merge or explicitly exclude it from product evidence.
