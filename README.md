@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Anthropic Agent Coordinator
 
 [![Agent Coordinator Verification](https://github.com/GlacierEQ/anthropic-agent-coordinator/actions/workflows/ci.yml/badge.svg)](https://github.com/GlacierEQ/anthropic-agent-coordinator/actions/workflows/ci.yml)
@@ -7,9 +8,19 @@
 **Canonical branch:** `master`  
 **Verification state:** `VERIFIED_AT_TEST_EVIDENCE`  
 **Verified executable commit:** `87438f57bdfd2cb380730cf51140611963d7c95b`
+=======
+# Anthropic Agent Coordinator — Multi-Agent Orchestration Engine 🤖
+
+> **DAG-based multi-agent task distribution and subagent lifecycle management.**
+
+[![Python](https://img.shields.io/badge/Python-3.9+-blue)]()
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6)]()
+[![Domain](https://img.shields.io/badge/Domain-Multi--Agent%20Systems-purple)]()
+>>>>>>> 2aef286 (docs(readme): upgrade to 3-section recruiter/engineer/mesh structure & update SHA-256 baseline)
 
 A deterministic specialist-task scheduler that respects dependency order, a shared global token budget, and aggregate per-role capacity without treating partial funding as completed work.
 
+<<<<<<< HEAD
 This independent portfolio project explores agent-orchestration architecture. It does not claim Anthropic employment, endorsement, affiliation, or use inside Anthropic systems.
 
 <!-- README-MESH:BEGIN -->
@@ -324,3 +335,59 @@ Integrity baselines and health sidecars, when present, are transparent multi-rep
 ## Portfolio role
 
 See [`HELIX_STRAND.md`](HELIX_STRAND.md) for this repository's role in the portfolio helix.
+=======
+## 🎯 For Recruiters & Hiring Managers
+
+This repository implements a **multi-agent DAG router and task coordinator** — orchestrating subagent execution across specialized task nodes. It demonstrates:
+
+- **DAG resolution algorithms** for multi-agent dependency trees
+- **Parallel subagent dispatch** with async event loops and queue backpressure
+- **Role-based subagent assignment** (coder, reviewer, tester, auditor)
+- **Fault-tolerant retry policies** with exponential backoff and circuit breaking
+
+**Why this matters**: As AI systems shift from single prompts to multi-agent swarms, DAG orchestration and subagent coordination become essential infrastructure for enterprise AI deployments.
+
+---
+
+## 🔬 For Engineers & Technical Reviewers
+
+### Architecture
+
+```
+User Prompt ──→ DAG Parser ──→ Agent DAG Router (TS)
+                                      │
+                   ┌──────────────────┼──────────────────┐
+                   ▼                  ▼                  ▼
+             Coder Agent       Reviewer Agent       Tester Agent
+```
+
+### Core Components
+
+| Component | Language | Purpose |
+|---|---|---|
+| `src/agent_coordinator.py` | Python | Swarm orchestrator, task queues, dependency resolution |
+| `src/dag_router.ts` | TypeScript | Typed DAG router for asynchronous task graph evaluation |
+| `tests/` | Python | Multi-agent execution test suite |
+
+---
+
+## 🤖 ML/AI & Programmatic Mesh Integration
+
+- **MCP Tool**: `coordinate_agents()` — exposes DAG routing to external AI agents
+- **Mastermind Sidecar**: Publishes agent telemetry to APEX Highway mesh
+- **SHA-256 Integrity**: Cryptographically verified via `.integrity/file_hashes.json`
+
+```typescript
+const router = new AgentDAGRouter();
+const executionOrder = router.resolveExecutionOrder(nodes);
+```
+
+---
+
+## ⚡ Quick Start
+
+```bash
+python3 src/agent_coordinator.py
+python3 tests/test_dag_router.py
+```
+>>>>>>> 2aef286 (docs(readme): upgrade to 3-section recruiter/engineer/mesh structure & update SHA-256 baseline)

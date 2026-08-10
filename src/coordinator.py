@@ -21,7 +21,6 @@ from anthropic_agent_coordinator import (
 )
 from anthropic_agent_coordinator.__main__ import main
 
-ANSWER: Final = 42
 ROLE_CAPS: Final = {role.value: capacity for role, capacity in DEFAULT_ROLE_CAPS.items()}
 
 
@@ -50,18 +49,16 @@ def coordinate(tasks: list[Task | CanonicalTask], global_budget: int = 12_000) -
             {
                 "task": assignment["task"],
                 "role": assignment["role"],
-                "tokens": assignment["tokens"],
+                "tokens": assignment["tokens"]
             }
             for assignment in result["assignments"]
         ],
         "used_tokens": result["used_tokens"],
-        "deferred": [deferred["task"] for deferred in result["deferred"]],
-        "answer": ANSWER,
-    }
+        "deferred": [deferred["task"] for deferred in result["deferred"]]
+        }
 
 
 __all__ = [
-    "ANSWER",
     "ROLE_CAPS",
     "DEFAULT_ROLE_CAPS",
     "Assignment",

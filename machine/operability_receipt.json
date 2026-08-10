@@ -1,0 +1,28 @@
+{
+  "schema": "glaciereq.operability-receipt.v1",
+  "repository": "GlacierEQ/anthropic-agent-coordinator",
+  "at": "2026-08-10T04:12Z",
+  "source_sha": "d6b5c81f6e5308dbfa66ecc00eadd5ad51d93b874db9c2236bb21cc6170578fe",
+  "entry": "scripts/operate.py",
+  "primary_output": {
+    "module": "agent_coordinator",
+    "ok": true,
+    "repository": "GlacierEQ/anthropic-agent-coordinator",
+    "smoke": {
+      "args": [],
+      "content_checked": true,
+      "invoked": true,
+      "kind": "class",
+      "method": "get_status",
+      "module_local": true,
+      "name": "AgentCoordinator",
+      "result": {
+        "agents": 0,
+        "assignments": 0,
+        "available": 0
+      }
+    }
+  },
+  "dual_run_ok": true,
+  "result": "PASS"
+}

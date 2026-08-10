@@ -63,14 +63,11 @@ def test_historical_coordinator_exports_and_result_shape_are_preserved() -> None
 
     result = compatibility.coordinate(tasks, global_budget=3_000)
 
-    assert compatibility.ANSWER == 42
     assert compatibility.ROLE_CAPS["explore"] == 4_000
-    assert result == {
-        "assignments": [
-            {"task": "discover", "role": "explore", "tokens": 1_000},
-            {"task": "plan", "role": "plan", "tokens": 1_000},
-        ],
-        "used_tokens": 2_000,
-        "deferred": [],
-        "answer": compatibility.ANSWER,
-    }
+    assert result["used_tokens"] == 2_000
+    assert result["deferred"] == []
+    assert result["assignments"] == [
+        {"task": "discover", "role": "explore", "tokens": 1_000},
+        {"task": "plan", "role": "plan", "tokens": 1_000},
+    ]
+    assert "answer" not in result

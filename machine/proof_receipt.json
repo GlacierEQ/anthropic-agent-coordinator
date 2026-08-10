@@ -1,0 +1,31 @@
+{
+  "schema": "glaciereq.proof-receipt.v1",
+  "repository": "GlacierEQ/anthropic-agent-coordinator",
+  "source_sha": "d6b5c81f6e5308dbfa66ecc00eadd5ad51d93b874db9c2236bb21cc6170578fe",
+  "proof_id": "elite-anthropic-agent-coordinator-1786335149",
+  "environment": {
+    "python": "/Users/kcbflux/job-app/excellence/.venv-elite/bin/python",
+    "PYTHONPATH": "/Users/kcbflux/job-app/repos/anthropic-agent-coordinator:/Users/kcbflux/job-app/repos/anthropic-agent-coordinator/src",
+    "entry": "unittest"
+  },
+  "tests": [
+    "/Users/kcbflux/job-app/excellence/.venv-elite/bin/python -m unittest discover -s tests -v (x2)"
+  ],
+  "adversarial_tests": [
+    "tests/test_adversarial.py"
+  ],
+  "runtime": {
+    "operate": "scripts/operate.py (x2)",
+    "dual_run_ok": true,
+    "proof_dual_run_ok": true
+  },
+  "result": "PASS",
+  "limitations": [
+    "not production deployed",
+    "reference implementation only"
+  ],
+  "timestamp": "2026-08-10T04:12Z",
+  "artifact_hashes": {
+    "operability_receipt": "aab0ccc9fdb84165481ef2ce5563c21edb77886c5b8415d3007d302cf1fce3f4"
+  }
+}

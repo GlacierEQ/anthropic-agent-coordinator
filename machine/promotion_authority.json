@@ -1,0 +1,11 @@
+{
+  "schema": "glaciereq.promotion-authority-grant.v1",
+  "repository": "GlacierEQ/anthropic-agent-coordinator",
+  "source_sha": "d6b5c81f6e5308dbfa66ecc00eadd5ad51d93b874db9c2236bb21cc6170578fe",
+  "proof_receipt_digest": "01a396be14905d625b5472f78237ccad12a472826de43d39300d6a996a122b10",
+  "not_after": 1788927149.234226,
+  "mac": "9826b4338dc62293da6a9cc26fbd231d98c0e68d178d7c813d092a3277093bb9",
+  "issuer": "local_operator_promotion_authority",
+  "verified": true,
+  "secret_ref": "src/promotion_authority.py::LOCAL_OPERATOR_SECRET"
+}
