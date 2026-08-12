@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Anthropic Agent Coordinator
 
 [![Agent Coordinator Verification](https://github.com/GlacierEQ/anthropic-agent-coordinator/actions/workflows/ci.yml/badge.svg)](https://github.com/GlacierEQ/anthropic-agent-coordinator/actions/workflows/ci.yml)
@@ -6,161 +5,73 @@
 **Version:** `1.0.0`  
 **Canonical repository:** `GlacierEQ/anthropic-agent-coordinator`  
 **Canonical branch:** `master`  
-**Verification state:** `VERIFIED_AT_TEST_EVIDENCE`  
+**Verification state:** `HISTORICAL_EXACT_REVISION_TEST_PROOF_ONLY`  
 **Verified executable commit:** `87438f57bdfd2cb380730cf51140611963d7c95b`
-=======
-# Anthropic Agent Coordinator — Multi-Agent Orchestration Engine 🤖
-
-> **DAG-based multi-agent task distribution and subagent lifecycle management.**
-
-[![Python](https://img.shields.io/badge/Python-3.9+-blue)]()
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6)]()
-[![Domain](https://img.shields.io/badge/Domain-Multi--Agent%20Systems-purple)]()
->>>>>>> 2aef286 (docs(readme): upgrade to 3-section recruiter/engineer/mesh structure & update SHA-256 baseline)
 
 A deterministic specialist-task scheduler that respects dependency order, a shared global token budget, and aggregate per-role capacity without treating partial funding as completed work.
 
-<<<<<<< HEAD
 This independent portfolio project explores agent-orchestration architecture. It does not claim Anthropic employment, endorsement, affiliation, or use inside Anthropic systems.
 
-<!-- README-MESH:BEGIN -->
+## Evidence boundary
 
-## For recruiters and non-technical reviewers
+The exact executable and test tree at commit `87438f57bdfd2cb380730cf51140611963d7c95b` has a governed test receipt recording 62 collected, 62 executed, 62 passed, 0 failures, 0 errors, and 0 skips. That historical proof does not transfer automatically to the current canonical head or to this repair candidate.
 
-### What this project solves
+Current-head deterministic, adversarial, runtime, deployment, provider-integration, scale, and production-use claims require fresh exact-revision evidence.
 
-Resource-constrained agent systems can produce misleading completion states. A task may receive only part of what it needs, a dependent task may begin before its prerequisite is complete, or deferred work may disappear inside a polished summary.
+## What this project solves
 
-This coordinator converts those decisions into a deterministic, reviewable plan. It reports:
+Resource-constrained agent systems can produce misleading completion states: a task may receive only part of what it needs, a dependent task may begin before its prerequisite is complete, or deferred work may disappear inside a polished summary.
 
-- which tasks are fully funded and assigned;
-- which scheduling wave each assignment belongs to;
-- how shared and role-specific capacity was consumed;
-- which tasks were deferred and why;
-- which downstream tasks remain blocked by incomplete prerequisites.
+The coordinator produces a deterministic, reviewable plan showing which tasks are fully funded and assigned, which scheduling wave each assignment belongs to, how shared and role-specific capacity was consumed, which tasks were deferred and why, and which downstream tasks remain blocked by incomplete prerequisites.
 
-### Why it matters
+### Correctness contract
 
-- **No fabricated completion.** Assigned tokens equal the full task estimate.
-- **Dependency integrity.** Deferred prerequisites never unlock downstream work.
-- **Aggregate role limits.** Capacity applies across every assignment for a role.
-- **Explicit priority.** `stable_priority` preserves declaration order among equally ready tasks.
-- **Deterministic output.** The same ordered graph and resource policy produce the same result.
-- **Fail-fast inputs.** Duplicate IDs, malformed dependencies, cycles, unsupported roles, and invalid resource values are rejected.
+- Assigned tokens equal the full task estimate; partial funding is not called completion.
+- Deferred prerequisites never unlock downstream work.
+- Global and aggregate per-role resource limits are enforced.
+- Declaration order provides stable priority among equally ready tasks.
+- Duplicate IDs, malformed dependencies, cycles, unsupported roles, and invalid resource values fail closed.
+- Structured deferrals preserve non-completion instead of hiding it.
 
-### Verified proof
-
-The exact executable and test tree at commit `87438f57bdfd2cb380730cf51140611963d7c95b` was reconstructed and executed with Python 3.13.5:
-
-| Proof | Result |
-|---|---:|
-| Tests collected | 62 |
-| Tests executed | 62 |
-| Tests passed | 62 |
-| Failures | 0 |
-| Errors | 0 |
-| Skips | 0 |
-| Evidence conclusion | `VERIFIED` |
-| Evidence level | `TEST` |
-
-The SHA-256-bound receipt is recorded in [`receipts/wave-1-test-verification-2026-07-31.json`](receipts/wave-1-test-verification-2026-07-31.json). The hosted Python 3.11–3.13 matrix did not execute and is **not** counted as passing.
-
-### Proof in 60 seconds
-
-| Open or run | What it demonstrates |
-|---|---|
-| [`src/anthropic_agent_coordinator/coordinator.py`](src/anthropic_agent_coordinator/coordinator.py) | Typed models, graph validation, scheduling policy, and result contract. |
-| [`tests/test_coordinator.py`](tests/test_coordinator.py) | Adversarial budget, dependency, validation, and canonical compatibility tests. |
-| [`tests/test_policy_and_scale.py`](tests/test_policy_and_scale.py) | Explicit priority, ordered dependencies, CLI behavior, and large-graph execution. |
-| [`tests/test_legacy_allocator.py`](tests/test_legacy_allocator.py) | Historical exports, constructor compatibility, capability matching, and idempotency. |
-| [`tests/test_verification.py`](tests/test_verification.py) | JUnit evidence and portable README regression tests. |
-| [`scripts/verify_junit.py`](scripts/verify_junit.py) | Bounded, encoding-gated, hashed, atomic test receipts. |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Intended hosted package, wheel, CLI, documentation, and test matrix. |
-
-```bash
-python -m pip install -e ".[dev]"
-agent-coordinate
-```
-
-The command emits JSON so people, tests, and connected systems inspect the same result.
-
-## For senior engineers and domain experts
-
-### Scheduling contract
-
-```python
-Task(
-    id="implement",
-    role=Role.IMPLEMENT,
-    tokens_est=6_000,
-    deps=("design",),
-)
-```
-
-A task is assigned only when:
-
-1. every dependency exists;
-2. the graph is acyclic;
-3. every prerequisite was fully assigned in an earlier wave;
-4. the complete estimate fits the remaining global budget;
-5. the complete estimate fits the remaining aggregate capacity for its role.
-
-Partial execution is deliberately outside this contract. Supporting partial work would require checkpoint, continuation, retry, and evidence semantics rather than silently reusing `complete`.
-
-### Architecture
+## Architecture
 
 ```text
 Ordered Task declarations
-          │
-          ▼
+          |
+          v
 Identity + resource validation
-          │
-          ▼
-Iterative dependency and cycle validation
-          │
-          ▼
+          |
+          v
+Dependency and cycle validation
+          |
+          v
 Dependency-indexed readiness waves
-          │
-     ┌────┴───────────────┐
-     ▼                    ▼
+          |
+     +----+----------------+
+     v                     v
 Full assignment       Explicit deferral
-     │          global • role • dependency
-     └───────────┬────────┘
-                 ▼
+     |          global / role / dependency
+     +-----------+---------+
+                 v
 Typed CoordinationResult
-JSON • tests • humans • downstream tools
+JSON / tests / humans / downstream tools
 ```
 
-### Correctness properties
+The scheduler intentionally preserves caller-declared priority. It does not claim to solve knapsack optimization, execute distributed agents, estimate tokens, provide fairness optimization, implement retries/checkpoints, or call external providers.
 
-| Property | Enforcement |
+## Proof surfaces
+
+| Surface | Responsibility |
 |---|---|
-| Unique identity | Duplicate task IDs fail before scheduling. |
-| Referential integrity | Unknown dependencies fail before scheduling. |
-| Acyclic graph | Iterative traversal returns a readable cycle trace without recursion-depth limits. |
-| Ordered dependencies | Sets, generators, bare strings, bytes, and non-string entries are rejected. |
-| Positive resources | Boolean, fractional, string, zero, and negative values are rejected. |
-| Immutable defaults | Public default role capacities cannot be mutated at runtime. |
-| Full-funding completion | Assignment tokens always equal the declared estimate. |
-| Aggregate role limits | Usage accumulates across every assignment for the role. |
-| Global conservation | Total assigned tokens cannot exceed the global budget. |
-| Dependency safety | Only fully assigned tasks enter the completed set. |
-| Stable priority | Declaration order resolves ties among tasks ready in the same wave. |
-| Explicit non-completion | Deferred records carry a reason and remaining-resource context. |
+| `src/anthropic_agent_coordinator/coordinator.py` | Typed models, graph validation, scheduling policy, and result contract |
+| `tests/test_coordinator.py` | Budget, dependency, validation, and compatibility tests |
+| `tests/test_policy_and_scale.py` | Priority, ordered dependencies, CLI behavior, and large-graph tests |
+| `tests/test_legacy_allocator.py` | Historical API compatibility and idempotency tests |
+| `tests/test_verification.py` | JUnit evidence and README regression tests |
+| `scripts/verify_junit.py` | Bounded, encoding-gated, hashed, atomic test receipts |
+| `.github/workflows/ci.yml` | Intended repository-native verification workflow |
 
-### Complexity and policy tradeoffs
-
-Identity validation, dependency indexing, readiness propagation, and iterative cycle validation are linear in task and dependency count, apart from stable ordering and deterministic reporting costs. The scheduler intentionally preserves caller-declared priority; it does not claim to solve knapsack optimization or maximize aggregate utilization by reordering work.
-
-It is not a distributed executor, general constraint solver, token estimator, fairness optimizer, retry engine, or checkpoint manager.
-
-### Deferral reasons
-
-- `global_budget` — the full estimate exceeds remaining shared budget;
-- `role_capacity` — the full estimate exceeds remaining capacity for the role;
-- `dependency_not_completed` — one or more prerequisites were not assigned.
-
-### Build and verification commands
+## Build and verification commands
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -177,15 +88,15 @@ python scripts/verify_junit.py \
   --output artifacts/test-receipt.json
 ```
 
-The intended wheel gate installs the built artifact into an isolated environment, imports both `anthropic_agent_coordinator` and the compatibility module `coordinator`, and runs the installed README verifier. The current promotion establishes TEST evidence from the exact candidate but does not claim hosted cross-version or deployment proof.
+These are verification interfaces, not claims that they passed on this repair candidate. Promotion requires an executed receipt bound to the resulting exact SHA.
 
-### Evidence behavior
+## Evidence behavior
 
 The receipt schema is `glaciereq.agent-coordinator.test-receipt.v1`.
 
 - Only UTF-8 JUnit XML is accepted; UTF-16, UTF-32, NUL-bearing, and undecodable artifacts fail closed.
 - DTD and entity declarations are rejected before XML parsing.
-- File size is checked before allocation, followed by a bounded read that also detects concurrent growth.
+- File size is checked before allocation, followed by a bounded read that detects concurrent growth.
 - Counts and SHA-256 are derived from the same byte snapshot.
 - Testcase outcomes must reconcile with suite summaries.
 - Missing, malformed, failing, or contradictory reports produce `FAILED` evidence.
@@ -193,58 +104,32 @@ The receipt schema is `glaciereq.agent-coordinator.test-receipt.v1`.
 - Successful receipts require at least one executed, non-skipped test.
 - Receipt replacement uses an exclusive temporary file and atomic rename.
 
-### Language fit
-
-| Language / format | Responsibility | Current proof |
-|---|---|---|
-| Python 3.11+ | Typed scheduling, validation, CLI, compatibility, and evidence tooling | Exact Python 3.13.5 TEST receipt; 3.11/3.12 hosted matrix blocked |
-| JSON | Coordination output and receipts | Schema assertions and CLI tests |
-| JUnit XML | Interoperable UTF-8 test evidence | Reconciled and SHA-256-bound receipt |
-| YAML | Read-only GitHub Actions policy | Checked-in workflow; execution unavailable |
-| Markdown | Recruiter, engineer, and toolchain contract | Structural README gate |
-
-## For AI systems and toolchains
-
-### Machine contract
+## Machine contract
 
 ```yaml
 schema: glaciereq.readme.v1
-profile: glaciereq.readme-impact.v2-draft
 repository: GlacierEQ/anthropic-agent-coordinator
 canonical_branch: master
 purpose: >-
   Validate a dependency graph and create a deterministic specialist-task plan
   under a shared global token budget and aggregate per-role capacities.
 status:
-  state: VERIFIED
-  achieved_evidence: TEST
+  state: HISTORICAL_EXACT_REVISION_TEST_PROOF_ONLY
   verified_executable_commit: 87438f57bdfd2cb380730cf51140611963d7c95b
   receipt: receipts/wave-1-test-verification-2026-07-31.json
-  proof:
-    python: 3.13.5
+  historical_proof:
     tests_collected: 62
     tests_executed: 62
     tests_passed: 62
     failures: 0
     errors: 0
     skipped: 0
-  verified_scope:
-    - deterministic dependency-aware scheduling
-    - full-funding assignment semantics
-    - global and aggregate role budgets
-    - cycle and dependency validation
-    - legacy coordinator compatibility
-    - positive-count JUnit receipt behavior
-    - README contract behavior
+  current_candidate:
+    proof_state: UNVERIFIED_PENDING_EXACT_SHA_EXECUTION
   blocked_scope:
-    - hosted Python 3.11, 3.12, and 3.13 matrix execution
-    - agent execution, provider calls, and irreversible external actions
-    - partial-task continuation without a checkpoint contract
-  unverified_scope:
-    - cross-version interpreter compatibility beyond the declared package floor
-    - source and wheel installation under hosted matrix environments
-    - production scale, fairness, latency, and reliability
-    - deployment
+    - current-head deterministic and adversarial verification until exact-SHA execution
+    - agent execution and provider calls
+    - production deployment, traffic, scale, latency, fairness, and reliability
 interfaces:
   inputs:
     - ordered Task objects
@@ -253,45 +138,27 @@ interfaces:
     - scheduling policy stable_priority
   outputs:
     - glaciereq.agent-coordinator.result.v1
-    - full assignments grouped by deterministic wave
+    - deterministic assignment waves
     - structured deferrals and blocking dependencies
     - aggregate role and global token accounting
-  commands:
-    install: python -m pip install -e ".[dev]"
-    demo: agent-coordinate
-    lint: ruff check src tests scripts
-    build: python -m build --outdir artifacts/dist
-    test: python -m pytest --junitxml=artifacts/pytest.xml
-    verify_readme: agent-coordinator-verify-readme
-evidence:
-  workflow: .github/workflows/ci.yml
-  test_receipt_schema: glaciereq.agent-coordinator.test-receipt.v1
-  promotion_receipt: receipts/wave-1-test-verification-2026-07-31.json
-  result_schema: glaciereq.agent-coordinator.result.v1
-  receipt_builder: scripts/verify_junit.py
-  tests:
-    - tests/test_coordinator.py
-    - tests/test_policy_and_scale.py
-    - tests/test_legacy_allocator.py
-    - tests/test_verification.py
 relationships:
   - target: GlacierEQ/anthropic-safety-monitor
-    relation: VERIFIED_BY
-    boundary: Independent safety evaluation remains a separate repository responsibility.
+    relation: INDEPENDENT_SPECIALIST
+    boundary: Safety evaluation remains a separate repository responsibility.
   - target: GlacierEQ/AKOS
-    relation: GOVERNED_BY
-    boundary: AKOS supplies authority, evidence, persistence, and completion semantics; no runtime integration is claimed here.
+    relation: GOVERNANCE_REFERENCE
+    boundary: No runtime integration is claimed here.
   - target: GlacierEQ/job-app-helix
     relation: REPRESENTED_BY
-    boundary: Helix records portfolio evidence but does not replace repository-native proof.
+    boundary: Portfolio representation does not replace repository-native proof.
 limits:
   - Scheduling does not execute agents or call external providers.
   - Token estimates are supplied, not inferred.
-  - Stable priority is not a claim of utilization-optimal packing.
-  - TEST evidence is not deployment evidence.
+  - Stable priority is not utilization-optimal packing.
+  - Historical TEST evidence is not current-head or deployment evidence.
 ```
 
-### Stable import surface
+## Stable import surface
 
 ```python
 from anthropic_agent_coordinator import (
@@ -305,16 +172,7 @@ from anthropic_agent_coordinator import (
 )
 ```
 
-`build_plan` returns `CoordinationResult`; `coordinate` returns the JSON-ready dictionary. The packaged `coordinator` module preserves the historical `Task(id, kind, tokens_est, deps)` declaration, `ANSWER`, string-keyed `ROLE_CAPS`, the original four-field result shape, and the original module/script name while routing work through the canonical engine.
-
-### Mesh resources
-
-- [Canonical README Mesh](https://github.com/GlacierEQ/job-app-helix/blob/main/manifests/readme_mesh.json)
-- [README Mesh Protobuf schema](https://github.com/GlacierEQ/job-app-helix/blob/main/proto/readme_mesh.proto)
-- [AKOS governance layer](https://github.com/GlacierEQ/AKOS)
-- [Independent safety monitor](https://github.com/GlacierEQ/anthropic-safety-monitor)
-
-<!-- README-MESH:END -->
+`build_plan` returns `CoordinationResult`; `coordinate` returns the JSON-ready dictionary. The packaged `coordinator` module preserves the historical declaration and result compatibility surface while routing work through the canonical engine.
 
 ## Repository map
 
@@ -325,69 +183,9 @@ src/agent_coordinator.py           source-only capability allocator experiment
 tests/                             canonical, policy, legacy, CLI, and evidence tests
 scripts/                           README and JUnit verification tools
 receipts/                          bounded promotion evidence
-.github/workflows/ci.yml           intended hosted verification matrix
+.github/workflows/ci.yml           repository-native verification policy
 ```
-
-## Fleet operations
-
-Integrity baselines and health sidecars, when present, are transparent multi-repository operations. See [`SECURITY_AND_FLEET_OPS.md`](SECURITY_AND_FLEET_OPS.md).
 
 ## Portfolio role
 
-See [`HELIX_STRAND.md`](HELIX_STRAND.md) for this repository's role in the portfolio helix.
-=======
-## 🎯 For Recruiters & Hiring Managers
-
-This repository implements a **multi-agent DAG router and task coordinator** — orchestrating subagent execution across specialized task nodes. It demonstrates:
-
-- **DAG resolution algorithms** for multi-agent dependency trees
-- **Parallel subagent dispatch** with async event loops and queue backpressure
-- **Role-based subagent assignment** (coder, reviewer, tester, auditor)
-- **Fault-tolerant retry policies** with exponential backoff and circuit breaking
-
-**Why this matters**: As AI systems shift from single prompts to multi-agent swarms, DAG orchestration and subagent coordination become essential infrastructure for enterprise AI deployments.
-
----
-
-## 🔬 For Engineers & Technical Reviewers
-
-### Architecture
-
-```
-User Prompt ──→ DAG Parser ──→ Agent DAG Router (TS)
-                                      │
-                   ┌──────────────────┼──────────────────┐
-                   ▼                  ▼                  ▼
-             Coder Agent       Reviewer Agent       Tester Agent
-```
-
-### Core Components
-
-| Component | Language | Purpose |
-|---|---|---|
-| `src/agent_coordinator.py` | Python | Swarm orchestrator, task queues, dependency resolution |
-| `src/dag_router.ts` | TypeScript | Typed DAG router for asynchronous task graph evaluation |
-| `tests/` | Python | Multi-agent execution test suite |
-
----
-
-## 🤖 ML/AI & Programmatic Mesh Integration
-
-- **MCP Tool**: `coordinate_agents()` — exposes DAG routing to external AI agents
-- **Mastermind Sidecar**: Publishes agent telemetry to APEX Highway mesh
-- **SHA-256 Integrity**: Cryptographically verified via `.integrity/file_hashes.json`
-
-```typescript
-const router = new AgentDAGRouter();
-const executionOrder = router.resolveExecutionOrder(nodes);
-```
-
----
-
-## ⚡ Quick Start
-
-```bash
-python3 src/agent_coordinator.py
-python3 tests/test_dag_router.py
-```
->>>>>>> 2aef286 (docs(readme): upgrade to 3-section recruiter/engineer/mesh structure & update SHA-256 baseline)
+See `HELIX_STRAND.md` for this repository's role in the portfolio helix. Portfolio projection never expands the repository-native evidence ceiling.
