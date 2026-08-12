@@ -1,0 +1,28 @@
+{
+  "schema": "glaciereq.repository-excellence.delta.v1",
+  "repository": "GlacierEQ/anthropic-agent-coordinator",
+  "canonical_branch": "master",
+  "observed_canonical_head": "7d15bfaec0040e7a55d4b435abcf0fe9e7b19cb1",
+  "role": "specialist_component",
+  "problem_verified": true,
+  "unique_value_known": true,
+  "canonical_identity_known": true,
+  "central_mechanism_implemented": true,
+  "deterministic_tests_pass": "historical_exact_revision_only:87438f57bdfd2cb380730cf51140611963d7c95b",
+  "adversarial_tests_pass": "historical_exact_revision_only:87438f57bdfd2cb380730cf51140611963d7c95b",
+  "runtime_behavior_observed": false,
+  "security_authority_bounded": "partial: reusable CI workflow pinned to a6085dae73bb80e91b845fd4a0d2f73a9c6b985a",
+  "proof_receipt_bound_to_sha": "historical_only",
+  "reusable_capabilities_extracted": true,
+  "projections_truth_consistent": false,
+  "evolution_cursor_defined": true,
+  "current_head_integrity": "FAILED_DOCUMENT_CONFLICT_MARKERS",
+  "evidence": {
+    "readme_blob_sha": "7ce6eef272d7d1a54dbb637d8c0a300c05394db4",
+    "conflict_markers_observed": ["<<<<<<< HEAD", "=======", ">>>>>>> 2aef286"],
+    "historical_verified_commit": "87438f57bdfd2cb380730cf51140611963d7c95b",
+    "historical_test_receipt": "receipts/wave-1-test-verification-2026-07-31.json"
+  },
+  "claim_ceiling": "HISTORICAL_EXACT_REVISION_TEST_PROOF_ONLY__CURRENT_HEAD_README_INTEGRITY_FAILED__NO_CURRENT_HEAD_TEST_OR_DEPLOYMENT_CLAIM",
+  "next_cursor": "Resolve README conflict markers by preserving the evidence-bounded HEAD side; then execute repository-native verification against the resulting exact SHA before promoting current-head deterministic/adversarial/projection gates."
+}
