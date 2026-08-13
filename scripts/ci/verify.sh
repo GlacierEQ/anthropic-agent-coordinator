@@ -4,10 +4,11 @@ set -euo pipefail
 readonly ROOT="${GITHUB_WORKSPACE:-$PWD}"
 readonly ARTIFACT_DIR="$ROOT/.verification-artifacts"
 readonly DIST_DIR="$ARTIFACT_DIR/dist"
+readonly VERIFY_VENV="$ROOT/.coordinator-verify-venv"
 readonly WHEEL_VENV="$ROOT/.coordinator-wheel-venv"
 
 cleanup() {
-  rm -rf "$WHEEL_VENV"
+  rm -rf "$VERIFY_VENV" "$WHEEL_VENV"
 }
 trap cleanup EXIT
 
@@ -17,13 +18,19 @@ export SOURCE_SHA
 install -d -m 700 "$ARTIFACT_DIR" "$DIST_DIR"
 rm -rf "$DIST_DIR"/*
 
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-python -m pip check
+python3 -m venv "$VERIFY_VENV"
+readonly PYTHON="$VERIFY_VENV/bin/python"
+readonly RUFF="$VERIFY_VENV/bin/ruff"
+readonly COORDINATE="$VERIFY_VENV/bin/agent-coordinate"
+readonly VERIFY_README="$VERIFY_VENV/bin/agent-coordinator-verify-readme"
 
-ruff check src tests scripts
-python -m compileall -q src tests scripts
-python -m build --outdir "$DIST_DIR"
+"$PYTHON" -m pip install --upgrade pip
+"$PYTHON" -m pip install -e ".[dev]"
+"$PYTHON" -m pip check
+
+"$RUFF" check src tests scripts
+"$PYTHON" -m compileall -q src tests scripts
+"$PYTHON" -m build --outdir "$DIST_DIR"
 
 mapfile -t wheels < <(find "$DIST_DIR" -maxdepth 1 -type f -name '*.whl' -print | sort)
 mapfile -t sdists < <(find "$DIST_DIR" -maxdepth 1 -type f -name '*.tar.gz' -print | sort)
@@ -36,7 +43,7 @@ mapfile -t sdists < <(find "$DIST_DIR" -maxdepth 1 -type f -name '*.tar.gz' -pri
   exit 65
 }
 
-python -m venv "$WHEEL_VENV"
+python3 -m venv "$WHEEL_VENV"
 "$WHEEL_VENV/bin/python" -m pip install --upgrade pip
 "$WHEEL_VENV/bin/python" -m pip install "${wheels[0]}"
 "$WHEEL_VENV/bin/python" -m pip check
@@ -53,9 +60,9 @@ if coordinator.ANSWER != 42:
 PY
 "$WHEEL_VENV/bin/agent-coordinator-verify-readme"
 
-python scripts/verify_readme_contract.py
-agent-coordinate > "$ARTIFACT_DIR/demo.json"
-python - <<'PY'
+"$PYTHON" scripts/verify_readme_contract.py
+"$COORDINATE" > "$ARTIFACT_DIR/demo.json"
+"$PYTHON" - <<'PY'
 import json
 from pathlib import Path
 
@@ -71,16 +78,16 @@ if payload.get("used_tokens") != 12_000:
 PY
 
 set +e
-python -m pytest --junitxml="$ARTIFACT_DIR/pytest.xml"
+"$PYTHON" -m pytest --junitxml="$ARTIFACT_DIR/pytest.xml"
 pytest_status=$?
 set -e
-python scripts/verify_junit.py \
+"$PYTHON" scripts/verify_junit.py \
   --junit "$ARTIFACT_DIR/pytest.xml" \
   --pytest-exit-code "$pytest_status" \
   --expected-sha "$SOURCE_SHA" \
   --output "$ARTIFACT_DIR/test-receipt.json"
 
-python - <<'PY'
+"$PYTHON" - <<'PY'
 from __future__ import annotations
 
 import hashlib
