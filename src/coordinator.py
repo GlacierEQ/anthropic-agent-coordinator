@@ -11,14 +11,14 @@ from anthropic_agent_coordinator import (
     Assignment,
     CoordinationError,
     CoordinationResult,
-    DeferredTask,
     DeferralReason,
+    DeferredTask,
     Role,
     SchedulingPolicy,
-    Task as CanonicalTask,
     build_plan,
-    coordinate as canonical_coordinate,
 )
+from anthropic_agent_coordinator import Task as CanonicalTask
+from anthropic_agent_coordinator import coordinate as canonical_coordinate
 from anthropic_agent_coordinator.__main__ import main
 
 ROLE_CAPS: Final = {role.value: capacity for role, capacity in DEFAULT_ROLE_CAPS.items()}
@@ -59,14 +59,14 @@ def coordinate(tasks: list[Task | CanonicalTask], global_budget: int = 12_000) -
 
 
 __all__ = [
+    "DEFAULT_ROLE_CAPS",
+    "ROLE_CAPS",
     "Assignment",
     "CanonicalTask",
     "CoordinationError",
     "CoordinationResult",
-    "DEFAULT_ROLE_CAPS",
-    "DeferredTask",
     "DeferralReason",
-    "ROLE_CAPS",
+    "DeferredTask",
     "Role",
     "SchedulingPolicy",
     "Task",
