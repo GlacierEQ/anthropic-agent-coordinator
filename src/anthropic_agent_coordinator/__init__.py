@@ -1,12 +1,12 @@
 """Deterministic, budget-aware specialist task coordination."""
 
 from .coordinator import (
+    DEFAULT_ROLE_CAPS,
     Assignment,
     CoordinationError,
     CoordinationResult,
-    DEFAULT_ROLE_CAPS,
-    DeferredTask,
     DeferralReason,
+    DeferredTask,
     Role,
     SchedulingPolicy,
     Task,
@@ -15,12 +15,12 @@ from .coordinator import (
 )
 
 __all__ = [
+    "DEFAULT_ROLE_CAPS",
     "Assignment",
     "CoordinationError",
     "CoordinationResult",
-    "DEFAULT_ROLE_CAPS",
-    "DeferredTask",
     "DeferralReason",
+    "DeferredTask",
     "Role",
     "SchedulingPolicy",
     "Task",
