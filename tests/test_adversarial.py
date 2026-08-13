@@ -155,10 +155,11 @@ class AdversarialEliteTests(unittest.TestCase):
         if not exercised:
             public = [name for name in dir(mod) if not name.startswith("_")]
             self.assertGreater(len(public), 0)
+            missing_surface = "__elite_missing_surface__"
             with self.assertRaises(
                 (AttributeError, TypeError, ImportError, ValueError, KeyError)
             ):
-                mod.__elite_missing_surface__
+                getattr(mod, missing_surface)
 
 
 if __name__ == "__main__":
