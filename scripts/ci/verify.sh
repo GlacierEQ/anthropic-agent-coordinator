@@ -4,25 +4,28 @@ set -euo pipefail
 readonly ROOT="${GITHUB_WORKSPACE:-$PWD}"
 readonly ARTIFACT_DIR="$ROOT/.verification-artifacts"
 readonly DIST_DIR="$ARTIFACT_DIR/dist"
-readonly VERIFY_VENV="$ROOT/.coordinator-verify-venv"
-readonly WHEEL_VENV="$ROOT/.coordinator-wheel-venv"
-
-cleanup() {
-  rm -rf "$VERIFY_VENV" "$WHEEL_VENV"
-}
-trap cleanup EXIT
 
 cd "$ROOT"
 readonly SOURCE_SHA="$(git rev-parse HEAD)"
 export SOURCE_SHA
-install -d -m 700 "$ARTIFACT_DIR" "$DIST_DIR"
+readonly TEMP_BASE="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
+readonly VENV_ROOT="$TEMP_BASE/anthropic-agent-coordinator-${GITHUB_RUN_ID:-local}-${SOURCE_SHA:0:12}"
+readonly VERIFY_VENV="$VENV_ROOT/verify"
+readonly WHEEL_VENV="$VENV_ROOT/wheel"
+
+cleanup() {
+  rm -rf "$VENV_ROOT"
+}
+trap cleanup EXIT
+
+rm -rf "$VENV_ROOT"
+install -d -m 700 "$VENV_ROOT" "$ARTIFACT_DIR" "$DIST_DIR"
 rm -rf "$DIST_DIR"/*
 
 python3 -m venv "$VERIFY_VENV"
 readonly PYTHON="$VERIFY_VENV/bin/python"
 readonly RUFF="$VERIFY_VENV/bin/ruff"
 readonly COORDINATE="$VERIFY_VENV/bin/agent-coordinate"
-readonly VERIFY_README="$VERIFY_VENV/bin/agent-coordinator-verify-readme"
 
 "$PYTHON" -m pip install --upgrade pip
 "$PYTHON" -m pip install -e ".[dev]"
@@ -55,8 +58,17 @@ if coordinator.SchedulingPolicy.STABLE_PRIORITY.value != "stable_priority":
     raise SystemExit("compatibility module omitted the scheduling policy")
 if package.DEFAULT_ROLE_CAPS[package.Role.EXPLORE] != 4_000:
     raise SystemExit("installed package exposed the wrong default role capacity")
-if coordinator.ANSWER != 42:
-    raise SystemExit("installed compatibility module changed the historical sentinel")
+result = coordinator.coordinate(
+    [
+        coordinator.Task("discover", "explore", 1_000),
+        coordinator.Task("plan", "plan", 1_000, deps=["discover"]),
+    ],
+    global_budget=3_000,
+)
+if result.get("used_tokens") != 2_000 or result.get("deferred") != []:
+    raise SystemExit("installed compatibility scheduler changed historical behavior")
+if "answer" in result:
+    raise SystemExit("installed compatibility scheduler reintroduced obsolete answer data")
 PY
 "$WHEEL_VENV/bin/agent-coordinator-verify-readme"
 
