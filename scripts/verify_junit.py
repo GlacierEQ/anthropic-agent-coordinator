@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import platform
+import subprocess
 import tempfile
 import time
 import xml.etree.ElementTree as ET
@@ -147,6 +148,26 @@ def parse_junit(path: Path) -> dict[str, int]:
     return parse_junit_bytes(read_bounded_junit(path))
 
 
+def current_repository_sha() -> str:
+    """Return the exact checked-out Git commit or fail closed."""
+
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError("cannot derive current repository SHA") from exc
+
+    sha = completed.stdout.strip().lower()
+    if len(sha) != 40 or any(char not in "0123456789abcdef" for char in sha):
+        raise ValueError(f"invalid repository SHA returned by git: {sha!r}")
+    return sha
+
+
 def atomic_write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary: Path | None = None
@@ -175,18 +196,29 @@ def verify_junit(
     output_path: Path,
     *,
     pytest_exit_code: int,
+    expected_sha: str | None = None,
 ) -> dict[str, object]:
     started_ns = time.time_ns()
     receipt: dict[str, object] = {
         "schema": RECEIPT_SCHEMA,
         "repository": "GlacierEQ/anthropic-agent-coordinator",
-        "commit": os.getenv("GITHUB_SHA", "LOCAL"),
         "python": platform.python_version(),
         "pytest_exit_code": pytest_exit_code,
         "started_at_epoch_ns": started_ns,
     }
 
     try:
+        repository_sha = current_repository_sha()
+        receipt["commit"] = repository_sha
+        if expected_sha is not None:
+            normalized_expected = expected_sha.strip().lower()
+            receipt["expected_commit"] = normalized_expected
+            if repository_sha != normalized_expected:
+                raise ValueError(
+                    "repository SHA does not match expected verification SHA: "
+                    f"actual={repository_sha} expected={normalized_expected}"
+                )
+
         if not junit_path.is_file():
             raise FileNotFoundError(f"JUnit artifact does not exist: {junit_path}")
         junit_bytes = read_bounded_junit(junit_path)
@@ -224,11 +256,16 @@ def verify_junit(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Convert a pytest JUnit artifact into an atomic evidence receipt."
+        description="Convert a pytest JUnit artifact into an exact-SHA-bound atomic evidence receipt."
     )
     parser.add_argument("--junit", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--pytest-exit-code", type=int, required=True)
+    parser.add_argument(
+        "--expected-sha",
+        required=True,
+        help="Exact checked-out Git commit that the JUnit evidence must verify.",
+    )
     return parser
 
 
@@ -238,6 +275,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.junit,
         args.output,
         pytest_exit_code=args.pytest_exit_code,
+        expected_sha=args.expected_sha,
     )
     print(json.dumps(receipt, indent=2, sort_keys=True))
     return 0 if receipt["conclusion"] == "VERIFIED" else 1
