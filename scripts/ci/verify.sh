@@ -12,6 +12,8 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$ROOT"
+readonly SOURCE_SHA="$(git rev-parse HEAD)"
+export SOURCE_SHA
 install -d -m 700 "$ARTIFACT_DIR" "$DIST_DIR"
 rm -rf "$DIST_DIR"/*
 
@@ -75,6 +77,7 @@ set -e
 python scripts/verify_junit.py \
   --junit "$ARTIFACT_DIR/pytest.xml" \
   --pytest-exit-code "$pytest_status" \
+  --expected-sha "$SOURCE_SHA" \
   --output "$ARTIFACT_DIR/test-receipt.json"
 
 python - <<'PY'
@@ -92,7 +95,8 @@ files = sorted(path for path in dist_dir.iterdir() if path.is_file())
 manifest = {
     "schema": "glaciereq.agent-coordinator.public-runner-receipt.v1",
     "repository": os.getenv("GITHUB_REPOSITORY", "GlacierEQ/anthropic-agent-coordinator"),
-    "commit": os.getenv("GITHUB_SHA", "LOCAL"),
+    "commit": os.environ["SOURCE_SHA"],
+    "github_event_sha": os.getenv("GITHUB_SHA", "LOCAL"),
     "run_id": os.getenv("GITHUB_RUN_ID", "LOCAL"),
     "run_attempt": os.getenv("GITHUB_RUN_ATTEMPT", "1"),
     "python": platform.python_version(),
