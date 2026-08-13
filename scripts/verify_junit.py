@@ -256,7 +256,10 @@ def verify_junit(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Convert a pytest JUnit artifact into an exact-SHA-bound atomic evidence receipt."
+        description=(
+            "Convert a pytest JUnit artifact into an exact-SHA-bound atomic evidence "
+            "receipt."
+        )
     )
     parser.add_argument("--junit", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
