@@ -68,7 +68,8 @@ The scheduler intentionally preserves caller-declared priority. It does not clai
 | `tests/test_policy_and_scale.py` | Priority, ordered dependencies, CLI behavior, and large-graph tests |
 | `tests/test_legacy_allocator.py` | Historical API compatibility and idempotency tests |
 | `tests/test_verification.py` | JUnit evidence and README regression tests |
-| `scripts/verify_junit.py` | Bounded, encoding-gated, hashed, atomic test receipts |
+| `tests/test_sha_binding.py` | Exact-source-SHA receipt binding and mismatch rejection |
+| `scripts/verify_junit.py` | Bounded, encoding-gated, hashed, atomic, exact-SHA-bound test receipts |
 | `.github/workflows/ci.yml` | Intended repository-native verification workflow |
 
 ## Build and verification commands
@@ -85,21 +86,23 @@ python -m pytest --junitxml=artifacts/pytest.xml
 python scripts/verify_junit.py \
   --junit artifacts/pytest.xml \
   --pytest-exit-code 0 \
+  --expected-sha "$(git rev-parse HEAD)" \
   --output artifacts/test-receipt.json
 ```
 
-These are verification interfaces, not claims that they passed on this repair candidate. Promotion requires an executed receipt bound to the resulting exact SHA.
+These are verification interfaces, not claims that they passed on this repair candidate. Promotion requires an executed receipt whose derived checked-out Git SHA exactly matches the expected candidate SHA.
 
 ## Evidence behavior
 
-The receipt schema is `glaciereq.agent-coordinator.test-receipt.v1`.
+The executable test receipt schema is `glaciereq.agent-coordinator.test-receipt.v1`. The historical Wave-1 promotion receipt uses `glaciereq.agent-coordinator.promotion-receipt.v1`, while repository-excellence blocker/repair state uses `glaciereq.repository-excellence.delta.v1`. These are distinct artifacts with distinct purposes; none substitutes for another.
 
 - Only UTF-8 JUnit XML is accepted; UTF-16, UTF-32, NUL-bearing, and undecodable artifacts fail closed.
 - DTD and entity declarations are rejected before XML parsing.
 - File size is checked before allocation, followed by a bounded read that detects concurrent growth.
 - Counts and SHA-256 are derived from the same byte snapshot.
 - Testcase outcomes must reconcile with suite summaries.
-- Missing, malformed, failing, or contradictory reports produce `FAILED` evidence.
+- The verifier derives the checked-out commit with `git rev-parse HEAD`; an expected-SHA mismatch fails closed before a VERIFIED receipt can be issued.
+- Missing, malformed, failing, contradictory, or wrong-SHA reports produce `FAILED` evidence.
 - Zero-test and all-skipped reports remain `UNVERIFIED`.
 - Successful receipts require at least one executed, non-skipped test.
 - Receipt replacement uses an exclusive temporary file and atomic rename.
