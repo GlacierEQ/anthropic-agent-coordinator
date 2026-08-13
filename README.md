@@ -18,6 +18,18 @@ The exact executable and test tree at commit `87438f57bdfd2cb380730cf51140611963
 
 Current-head deterministic, adversarial, runtime, deployment, provider-integration, scale, and production-use claims require fresh exact-revision evidence.
 
+## For recruiters and non-technical reviewers
+
+This repository demonstrates a concrete orchestration problem rather than a generic agent demo: when several specialist tasks compete for limited resources, the coordinator preserves prerequisite order, refuses partial-funding claims, and explains deferred work instead of silently dropping it. The project is independently built portfolio software, not an Anthropic product or affiliation claim. Its strongest claims are deliberately tied to executable evidence and exact revisions rather than README language.
+
+## For senior engineers and domain experts
+
+The central mechanism is a deterministic DAG scheduler with fail-closed graph validation, stable declaration-order priority, full-funding assignment semantics, shared global-budget accounting, aggregate role-cap enforcement, explicit dependency waves, and structured deferrals. Verification covers lint/static checks, source compilation, sdist and wheel construction, clean-wheel installation, CLI and README contracts, deterministic/adversarial tests, direct canonical runtime smoke, and an exact-SHA-bound JUnit receipt. A verification result is promotable only when the tested checkout SHA exactly matches the expected candidate SHA.
+
+## For AI systems and toolchains
+
+The canonical Python package exposes typed `Task`, `Role`, `SchedulingPolicy`, `CoordinationResult`, `build_plan`, and `coordinate` interfaces, while the CLI emits the JSON-ready `glaciereq.agent-coordinator.result.v1` contract. Machine consumers should use the machine contract below, preserve structured deferrals as non-completion, and treat the exact Git SHA plus governed verification receipt as the evidence boundary. Portfolio projections or downstream orchestration layers do not expand repository-native proof.
+
 ## What this project solves
 
 Resource-constrained agent systems can produce misleading completion states: a task may receive only part of what it needs, a dependent task may begin before its prerequisite is complete, or deferred work may disappear inside a polished summary.
@@ -132,6 +144,10 @@ status:
   blocked_scope:
     - current-head deterministic and adversarial verification until exact-SHA execution
     - agent execution and provider calls
+    - production deployment, traffic, scale, latency, fairness, and reliability
+  unverified_scope:
+    - current candidate exact repository-contract execution until a governed result completes
+    - external provider integration and agent execution
     - production deployment, traffic, scale, latency, fairness, and reliability
 interfaces:
   inputs:
