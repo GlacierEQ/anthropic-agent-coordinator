@@ -6,6 +6,7 @@ Auditors re-verify grants with LOCAL_OPERATOR_SECRET and
 scripts/verify_promotion_grant.py against machine/promotion_authority.json
 bound to machine/proof_receipt.json digest + source_sha.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -13,14 +14,15 @@ import hmac
 import json
 import time
 from dataclasses import dataclass
-
+from pathlib import Path
 
 # Reference local operator secret (NOT production). Documented for re-verification.
 LOCAL_OPERATOR_SECRET = b"glaciereq-local-operator-promotion-authority-v1"
 
 
 def _digest(obj: object) -> str:
-    return hashlib.sha256(json.dumps(obj, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    serialized = json.dumps(obj, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(serialized).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -32,16 +34,18 @@ class PromotionGrant:
     mac: str
 
     def fingerprint(self) -> str:
-        return _digest({
-            "repository": self.repository,
-            "source_sha": self.source_sha,
-            "proof_receipt_digest": self.proof_receipt_digest,
-            "not_after": self.not_after,
-            "mac": self.mac,
-        })
+        return _digest(
+            {
+                "repository": self.repository,
+                "source_sha": self.source_sha,
+                "proof_receipt_digest": self.proof_receipt_digest,
+                "not_after": self.not_after,
+                "mac": self.mac,
+            }
+        )
 
     @classmethod
-    def from_dict(cls, d: dict) -> "PromotionGrant":
+    def from_dict(cls, d: dict) -> PromotionGrant:
         return cls(
             repository=d["repository"],
             source_sha=d["source_sha"],
@@ -60,18 +64,31 @@ class PromotionAuthority:
         self._secret = secret
         self._ttl = ttl_s
 
-    def issue(self, repository: str, source_sha: str, proof_receipt_digest: str, now: float | None = None) -> PromotionGrant:
+    def issue(
+        self,
+        repository: str,
+        source_sha: str,
+        proof_receipt_digest: str,
+        now: float | None = None,
+    ) -> PromotionGrant:
         t = time.time() if now is None else now
         na = t + self._ttl
         body = f"{repository}|{source_sha}|{proof_receipt_digest}|{na}"
         mac = hmac.new(self._secret, body.encode(), hashlib.sha256).hexdigest()
         return PromotionGrant(repository, source_sha, proof_receipt_digest, na, mac)
 
-    def verify(self, grant: PromotionGrant, now: float | None = None) -> tuple[bool, str | None]:
+    def verify(
+        self,
+        grant: PromotionGrant,
+        now: float | None = None,
+    ) -> tuple[bool, str | None]:
         t = time.time() if now is None else now
         if t > grant.not_after:
             return False, "GRANT_EXPIRED"
-        body = f"{grant.repository}|{grant.source_sha}|{grant.proof_receipt_digest}|{grant.not_after}"
+        body = (
+            f"{grant.repository}|{grant.source_sha}|"
+            f"{grant.proof_receipt_digest}|{grant.not_after}"
+        )
         mac = hmac.new(self._secret, body.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(mac, grant.mac):
             return False, "BAD_MAC"
@@ -80,7 +97,7 @@ class PromotionAuthority:
 
 def verify_bound_grant(
     grant_dict: dict,
-    proof_receipt_path: str | bytes | "Path",
+    proof_receipt_path: str | bytes | Path,
     *,
     secret: bytes = LOCAL_OPERATOR_SECRET,
     now: float | None = None,
@@ -93,8 +110,7 @@ def verify_bound_grant(
       3) HMAC verify with operator secret
     Fail-closed on any mismatch.
     """
-    from pathlib import Path as _P
-    path = _P(proof_receipt_path)
+    path = Path(proof_receipt_path)
     if not path.is_file():
         return False, "PROOF_RECEIPT_MISSING"
     proof_bytes = path.read_bytes()
@@ -111,5 +127,6 @@ def verify_bound_grant(
         grant = PromotionGrant.from_dict(grant_dict)
     except Exception:
         return False, "GRANT_MALFORMED"
-    auth = PromotionAuthority(secret, ttl_s=max(1.0, float(grant.not_after) - (now or time.time()) + 1.0))
+    remaining_ttl = float(grant.not_after) - (now or time.time()) + 1.0
+    auth = PromotionAuthority(secret, ttl_s=max(1.0, remaining_ttl))
     return auth.verify(grant, now=now)

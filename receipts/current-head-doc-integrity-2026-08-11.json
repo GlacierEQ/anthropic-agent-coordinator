@@ -1,0 +1,38 @@
+{
+  "schema": "glaciereq.repository-excellence.delta.v1",
+  "repository": "GlacierEQ/anthropic-agent-coordinator",
+  "canonical_branch": "master",
+  "observed_canonical_head": "7d15bfaec0040e7a55d4b435abcf0fe9e7b19cb1",
+  "candidate_head_before_this_receipt_update": "3bf4ec92a3a3fe80766d330f3d5b6d983702e39a",
+  "role": "specialist_component",
+  "problem_verified": true,
+  "unique_value_known": true,
+  "canonical_identity_known": true,
+  "central_mechanism_implemented": true,
+  "deterministic_tests_pass": "historical_exact_revision_only:87438f57bdfd2cb380730cf51140611963d7c95b",
+  "adversarial_tests_pass": "historical_exact_revision_only:87438f57bdfd2cb380730cf51140611963d7c95b",
+  "runtime_behavior_observed": false,
+  "security_authority_bounded": "partial: reusable CI workflow pinned to a6085dae73bb80e91b845fd4a0d2f73a9c6b985a",
+  "proof_receipt_bound_to_sha": "historical_only_pending_current_candidate_execution",
+  "reusable_capabilities_extracted": true,
+  "projections_truth_consistent": true,
+  "evolution_cursor_defined": true,
+  "current_head_integrity": "README_CONFLICT_REPAIRED_PENDING_NATIVE_VERIFICATION",
+  "evidence": {
+    "repaired_readme_blob_sha": "2da4f6752403ec2146c7e3eb3304fb8df676cd83",
+    "repaired_readme_commit": "3bf4ec92a3a3fe80766d330f3d5b6d983702e39a",
+    "conflict_markers_remaining": [],
+    "projection_state": {
+      "verification_state": "HISTORICAL_EXACT_REVISION_TEST_PROOF_ONLY",
+      "verified_executable_commit": "87438f57bdfd2cb380730cf51140611963d7c95b",
+      "current_candidate_proof_state": "UNVERIFIED_PENDING_EXACT_SHA_EXECUTION"
+    },
+    "historical_verified_commit": "87438f57bdfd2cb380730cf51140611963d7c95b",
+    "historical_test_receipt": {
+      "path": "receipts/wave-1-test-verification-2026-07-31.json",
+      "containing_commit": "ac977563cfd59deb8e87177f53082184f6468aa8"
+    }
+  },
+  "claim_ceiling": "README_REPAIR_VERIFIED_BY_EXACT_BLOB_ONLY__HISTORICAL_TEST_PROOF_ONLY__NO_CURRENT_CANDIDATE_TEST_OR_DEPLOYMENT_CLAIM_UNTIL_NATIVE_CI",
+  "next_cursor": "Execute repository-native verification against the resulting exact candidate SHA; if Python 3.11, 3.12 and 3.13 all pass with exact-SHA-bound receipts, promote current-head deterministic/adversarial proof and merge with an expected-head guard."
+}

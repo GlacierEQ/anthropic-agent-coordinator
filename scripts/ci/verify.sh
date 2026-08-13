@@ -4,24 +4,36 @@ set -euo pipefail
 readonly ROOT="${GITHUB_WORKSPACE:-$PWD}"
 readonly ARTIFACT_DIR="$ROOT/.verification-artifacts"
 readonly DIST_DIR="$ARTIFACT_DIR/dist"
-readonly WHEEL_VENV="$ROOT/.coordinator-wheel-venv"
+
+cd "$ROOT"
+readonly SOURCE_SHA="$(git rev-parse HEAD)"
+export SOURCE_SHA
+readonly TEMP_BASE="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
+readonly VENV_ROOT="$TEMP_BASE/anthropic-agent-coordinator-${GITHUB_RUN_ID:-local}-${SOURCE_SHA:0:12}"
+readonly VERIFY_VENV="$VENV_ROOT/verify"
+readonly WHEEL_VENV="$VENV_ROOT/wheel"
 
 cleanup() {
-  rm -rf "$WHEEL_VENV"
+  rm -rf "$VENV_ROOT"
 }
 trap cleanup EXIT
 
-cd "$ROOT"
-install -d -m 700 "$ARTIFACT_DIR" "$DIST_DIR"
+rm -rf "$VENV_ROOT"
+install -d -m 700 "$VENV_ROOT" "$ARTIFACT_DIR" "$DIST_DIR"
 rm -rf "$DIST_DIR"/*
 
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-python -m pip check
+python3 -m venv "$VERIFY_VENV"
+readonly PYTHON="$VERIFY_VENV/bin/python"
+readonly RUFF="$VERIFY_VENV/bin/ruff"
+readonly COORDINATE="$VERIFY_VENV/bin/agent-coordinate"
 
-ruff check src tests scripts
-python -m compileall -q src tests scripts
-python -m build --outdir "$DIST_DIR"
+"$PYTHON" -m pip install --upgrade pip
+"$PYTHON" -m pip install -e ".[dev]"
+"$PYTHON" -m pip check
+
+"$RUFF" check src tests scripts
+"$PYTHON" -m compileall -q src tests scripts
+"$PYTHON" -m build --outdir "$DIST_DIR"
 
 mapfile -t wheels < <(find "$DIST_DIR" -maxdepth 1 -type f -name '*.whl' -print | sort)
 mapfile -t sdists < <(find "$DIST_DIR" -maxdepth 1 -type f -name '*.tar.gz' -print | sort)
@@ -34,7 +46,7 @@ mapfile -t sdists < <(find "$DIST_DIR" -maxdepth 1 -type f -name '*.tar.gz' -pri
   exit 65
 }
 
-python -m venv "$WHEEL_VENV"
+python3 -m venv "$WHEEL_VENV"
 "$WHEEL_VENV/bin/python" -m pip install --upgrade pip
 "$WHEEL_VENV/bin/python" -m pip install "${wheels[0]}"
 "$WHEEL_VENV/bin/python" -m pip check
@@ -46,14 +58,23 @@ if coordinator.SchedulingPolicy.STABLE_PRIORITY.value != "stable_priority":
     raise SystemExit("compatibility module omitted the scheduling policy")
 if package.DEFAULT_ROLE_CAPS[package.Role.EXPLORE] != 4_000:
     raise SystemExit("installed package exposed the wrong default role capacity")
-if coordinator.ANSWER != 42:
-    raise SystemExit("installed compatibility module changed the historical sentinel")
+result = coordinator.coordinate(
+    [
+        coordinator.Task("discover", "explore", 1_000),
+        coordinator.Task("plan", "plan", 1_000, deps=["discover"]),
+    ],
+    global_budget=3_000,
+)
+if result.get("used_tokens") != 2_000 or result.get("deferred") != []:
+    raise SystemExit("installed compatibility scheduler changed historical behavior")
+if "answer" in result:
+    raise SystemExit("installed compatibility scheduler reintroduced obsolete answer data")
 PY
 "$WHEEL_VENV/bin/agent-coordinator-verify-readme"
 
-python scripts/verify_readme_contract.py
-agent-coordinate > "$ARTIFACT_DIR/demo.json"
-python - <<'PY'
+"$PYTHON" scripts/verify_readme_contract.py
+"$COORDINATE" > "$ARTIFACT_DIR/demo.json"
+"$PYTHON" - <<'PY'
 import json
 from pathlib import Path
 
@@ -69,15 +90,16 @@ if payload.get("used_tokens") != 12_000:
 PY
 
 set +e
-python -m pytest --junitxml="$ARTIFACT_DIR/pytest.xml"
+"$PYTHON" -m pytest --junitxml="$ARTIFACT_DIR/pytest.xml"
 pytest_status=$?
 set -e
-python scripts/verify_junit.py \
+"$PYTHON" scripts/verify_junit.py \
   --junit "$ARTIFACT_DIR/pytest.xml" \
   --pytest-exit-code "$pytest_status" \
+  --expected-sha "$SOURCE_SHA" \
   --output "$ARTIFACT_DIR/test-receipt.json"
 
-python - <<'PY'
+"$PYTHON" - <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -92,7 +114,8 @@ files = sorted(path for path in dist_dir.iterdir() if path.is_file())
 manifest = {
     "schema": "glaciereq.agent-coordinator.public-runner-receipt.v1",
     "repository": os.getenv("GITHUB_REPOSITORY", "GlacierEQ/anthropic-agent-coordinator"),
-    "commit": os.getenv("GITHUB_SHA", "LOCAL"),
+    "commit": os.environ["SOURCE_SHA"],
+    "github_event_sha": os.getenv("GITHUB_SHA", "LOCAL"),
     "run_id": os.getenv("GITHUB_RUN_ID", "LOCAL"),
     "run_attempt": os.getenv("GITHUB_RUN_ATTEMPT", "1"),
     "python": platform.python_version(),

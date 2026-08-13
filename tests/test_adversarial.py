@@ -1,51 +1,62 @@
 from __future__ import annotations
+
 import importlib
 import inspect
-import unittest
 import sys
+import unittest
 from pathlib import Path
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
+
 class AdversarialEliteTests(unittest.TestCase):
     def _load(self):
         errors = []
-        for name in ('agent_coordinator', "src." + 'agent_coordinator'):
+        for name in ("agent_coordinator", "src.agent_coordinator"):
             try:
                 return importlib.import_module(name)
-            except Exception as e:
-                errors.append(f"{name}: {e}")
+            except Exception as exc:
+                errors.append(f"{name}: {exc}")
         self.fail("; ".join(errors))
 
     def test_module_importable(self):
         mod = self._load()
-        public = [n for n in dir(mod) if not n.startswith("_")]
+        public = [name for name in dir(mod) if not name.startswith("_")]
         self.assertGreater(len(public), 0, "module exposes no public names")
 
     def test_refuse_bad_import_path_does_not_shadow(self):
         with self.assertRaises(ModuleNotFoundError):
-            importlib.import_module("src.__elite_does_not_exist_" + 'agent_coordinator')
+            importlib.import_module("src.__elite_does_not_exist_agent_coordinator")
 
     def test_central_mechanism_refuse_or_edge(self):
         """Exercise shipped refuse/edge paths when present; never crash open."""
         mod = self._load()
         exercised = False
 
-        # plan(connector, action) refuse nonsense connector
         for cname, cls in inspect.getmembers(mod, inspect.isclass):
             if cname.startswith("_"):
                 continue
-            # include re-exported central classes (not pure stdlib typing)
             mname = getattr(cls, "__module__", None) or ""
-            if mname.startswith("typing") or mname in {"builtins", "collections", "pathlib", "json", "sys", "os"}:
+            external_modules = {
+                "builtins",
+                "collections",
+                "json",
+                "os",
+                "pathlib",
+                "sys",
+            }
+            if mname.startswith("typing") or mname in external_modules:
                 continue
-            if getattr(mod, cname, None) is not cls and mname not in {mod.__name__, getattr(mod, "__package__", None)}:
+            local_modules = {mod.__name__, getattr(mod, "__package__", None)}
+            if getattr(mod, cname, None) is not cls and mname not in local_modules:
                 continue
             try:
                 sig = inspect.signature(cls)
                 if any(
-                    p.default is inspect.Parameter.empty and p.name != "self"
+                    p.default is inspect.Parameter.empty
+                    and p.name != "self"
                     and p.kind not in (p.VAR_POSITIONAL, p.VAR_KEYWORD)
                     for p in sig.parameters.values()
                 ):
@@ -59,22 +70,20 @@ class AdversarialEliteTests(unittest.TestCase):
                     out = plan("__elite_no_such_connector__", "delete")
                     self.assertIsNotNone(out)
                     if isinstance(out, dict):
-                        # refuse should not silently allow destructive unknown work
                         allowed = out.get("allowed")
                         if allowed is True:
                             self.assertTrue(
                                 out.get("human_approved") is True
-                                or out.get("status") in {"REFUSED", "DENIED", "ERROR", "UNKNOWN"},
+                                or out.get("status")
+                                in {"REFUSED", "DENIED", "ERROR", "UNKNOWN"},
                                 f"plan allowed unknown connector: {out!r}",
                             )
                         exercised = True
                     else:
                         exercised = True
-                except Exception as e:
-                    # hard fail-closed is acceptable refuse
+                except Exception as exc:
                     exercised = True
-                    self.assertIsInstance(e, Exception)
-            # authorize/decide refuse
+                    self.assertIsInstance(exc, Exception)
             for meth in ("authorize", "decide", "check"):
                 fn = getattr(inst, meth, None)
                 if not callable(fn):
@@ -82,8 +91,10 @@ class AdversarialEliteTests(unittest.TestCase):
                 try:
                     ps = inspect.signature(fn)
                     req = [
-                        p for p in ps.parameters.values()
-                        if p.name != "self" and p.default is inspect.Parameter.empty
+                        p
+                        for p in ps.parameters.values()
+                        if p.name != "self"
+                        and p.default is inspect.Parameter.empty
                         and p.kind not in (p.VAR_POSITIONAL, p.VAR_KEYWORD)
                     ]
                     if req:
@@ -96,7 +107,6 @@ class AdversarialEliteTests(unittest.TestCase):
                 except Exception:
                     exercised = True
 
-        # module-level schedule([]) / health edges
         sched = getattr(mod, "schedule", None)
         if callable(sched):
             try:
@@ -129,7 +139,6 @@ class AdversarialEliteTests(unittest.TestCase):
             except Exception:
                 exercised = True
 
-        # metrics / efficiency attributes on zero-arg engines
         for cname, cls in inspect.getmembers(mod, inspect.isclass):
             if cname.startswith("_"):
                 continue
@@ -144,11 +153,14 @@ class AdversarialEliteTests(unittest.TestCase):
                 break
 
         if not exercised:
-            # last resort: public API still rejects nonsense attribute assignment theater
-            public = [n for n in dir(mod) if not n.startswith("_")]
+            public = [name for name in dir(mod) if not name.startswith("_")]
             self.assertGreater(len(public), 0)
-            with self.assertRaises((AttributeError, TypeError, ImportError, ValueError, KeyError)):
-                getattr(mod, "__elite_missing_surface__")
+            missing_surface = "__elite_missing_surface__"
+            with self.assertRaises(
+                (AttributeError, TypeError, ImportError, ValueError, KeyError)
+            ):
+                getattr(mod, missing_surface)
+
 
 if __name__ == "__main__":
     unittest.main()
