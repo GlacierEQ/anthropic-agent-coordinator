@@ -7,7 +7,11 @@ from scripts.verify_junit import current_repository_sha, verify_junit
 
 def write_success_junit(path: Path) -> None:
     path.write_text(
-        '<testsuites><testsuite name="suite" tests="1" failures="0" errors="0" skipped="0"><testcase name="pass" /></testsuite></testsuites>',
+        (
+            '<testsuites><testsuite name="suite" tests="1" failures="0" '
+            'errors="0" skipped="0"><testcase name="pass" />'
+            "</testsuite></testsuites>"
+        ),
         encoding="utf-8",
     )
 
