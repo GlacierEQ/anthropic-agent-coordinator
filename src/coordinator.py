@@ -49,24 +49,24 @@ def coordinate(tasks: list[Task | CanonicalTask], global_budget: int = 12_000) -
             {
                 "task": assignment["task"],
                 "role": assignment["role"],
-                "tokens": assignment["tokens"]
+                "tokens": assignment["tokens"],
             }
             for assignment in result["assignments"]
         ],
         "used_tokens": result["used_tokens"],
-        "deferred": [deferred["task"] for deferred in result["deferred"]]
-        }
+        "deferred": [deferred["task"] for deferred in result["deferred"]],
+    }
 
 
 __all__ = [
-    "ROLE_CAPS",
-    "DEFAULT_ROLE_CAPS",
     "Assignment",
     "CanonicalTask",
     "CoordinationError",
     "CoordinationResult",
+    "DEFAULT_ROLE_CAPS",
     "DeferredTask",
     "DeferralReason",
+    "ROLE_CAPS",
     "Role",
     "SchedulingPolicy",
     "Task",
