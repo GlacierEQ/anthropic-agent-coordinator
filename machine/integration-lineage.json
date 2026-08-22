@@ -1,0 +1,88 @@
+{
+  "schema": "glaciereq.integration-lineage.v1",
+  "repository": "GlacierEQ/anthropic-agent-coordinator",
+  "strategy": "preserve-strong-local-runtime-and-import-only-proven-mechanisms",
+  "adoptions": [
+    {
+      "source_repo": "GlacierEQ/pro-code",
+      "source_path": "DESIGN_PRINCIPLES.md",
+      "source_blob_sha": "b7a42bdd3f2784f359ef737ae61cf2b4db396dd9",
+      "adopted_mechanisms": [
+        "failure paths as first-class design",
+        "audit trail for consequential execution",
+        "complexity must earn capability"
+      ],
+      "local_evidence": [
+        "src/anthropic_agent_coordinator/coordinator.py",
+        "tests/test_adversarial.py",
+        "tests/test_verification.py"
+      ]
+    },
+    {
+      "source_repo": "GlacierEQ/Pro_Code",
+      "source_path": "README.md",
+      "source_blob_sha": "21775d6f74baa152f2777f8880261710b5fe99ee",
+      "adopted_mechanisms": [
+        "target-repository implementation and proof outrank doctrine-only claims"
+      ],
+      "local_evidence": [
+        "scripts/ci/verify.sh",
+        "tests/test_coordinator.py",
+        "tests/test_policy_and_scale.py"
+      ]
+    },
+    {
+      "source_repo": "GlacierEQ/glaciereq-excellence-core",
+      "source_path": "src/glaciereq_excellence_core/innovation.py",
+      "source_blob_sha": "968077ab78a0d628ce84f5e6155b6885f3aa092d",
+      "adopted_mechanisms": [
+        "preserve explicit multi-dimensional tradeoffs instead of collapsing them into decorative scores",
+        "validate finite bounded decision inputs"
+      ],
+      "local_evidence": [
+        "src/anthropic_agent_coordinator/coordinator.py",
+        "tests/test_policy_and_scale.py"
+      ]
+    },
+    {
+      "source_repo": "GlacierEQ/apex-control-plane",
+      "source_path": "APEX_ENFORCED_STARTUP.md",
+      "source_blob_sha": "373cf1a9f0e879e62f8cef5159822a42234b57d5",
+      "adopted_mechanisms": [
+        "executed and verified states require receipts",
+        "adversarial verification before promotion",
+        "preserve strong source state during integration"
+      ],
+      "local_evidence": [
+        "scripts/ci/verify.sh",
+        "tests/test_sha_binding.py",
+        "tests/test_verification.py"
+      ]
+    },
+    {
+      "source_repo": "GlacierEQ/public-actions-runner-host",
+      "source_path": ".github/workflows/reusable-quick-ci.yml",
+      "source_blob_sha": "2f4151fdf31432272aec5101318834c8257a7a87",
+      "workflow_ref": "a6085dae73bb80e91b845fd4a0d2f73a9c6b985a",
+      "adopted_mechanisms": [
+        "trusted GlacierEQ caller boundary",
+        "repository-owned strict verification",
+        "verification artifact upload"
+      ],
+      "local_evidence": [
+        ".github/workflows/ci.yml",
+        "scripts/ci/verify.sh"
+      ]
+    }
+  ],
+  "preserved_local_mechanism": {
+    "source": "src/anthropic_agent_coordinator/coordinator.py",
+    "role": "validated dependency-aware role-budget scheduler",
+    "reason_not_replaced": "existing scheduler already has DAG cycle refusal, dependency deferral, global and role budget accounting, deterministic policy, package verification, scale tests, and receipt-producing CI"
+  },
+  "nonclaims": [
+    "lineage does not imply Anthropic affiliation or proprietary access",
+    "lineage does not imply live runtime connectivity to donor repositories",
+    "the local coordinator remains the execution authority for its own scheduling semantics"
+  ]
+}
