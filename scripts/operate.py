@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Produce continuation-oriented scheduler observations for the coordinator."""
+
 from __future__ import annotations
 
 import json
@@ -61,7 +62,9 @@ def _observe_plan(label: str, result: dict[str, object]) -> list[str]:
 def operate() -> dict[str, object]:
     nominal = _nominal_plan()
     constrained = _constrained_plan()
-    resolution_work = sorted(set(_observe_plan("nominal", nominal) + _observe_plan("constrained", constrained)))
+    resolution_work = sorted(
+        set(_observe_plan("nominal", nominal) + _observe_plan("constrained", constrained))
+    )
     return {
         "repository": REPOSITORY,
         "module": "anthropic_agent_coordinator",

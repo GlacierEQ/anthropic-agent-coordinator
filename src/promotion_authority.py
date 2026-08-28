@@ -86,8 +86,7 @@ class PromotionAuthority:
         if t > grant.not_after:
             return False, "GRANT_EXPIRED"
         body = (
-            f"{grant.repository}|{grant.source_sha}|"
-            f"{grant.proof_receipt_digest}|{grant.not_after}"
+            f"{grant.repository}|{grant.source_sha}|{grant.proof_receipt_digest}|{grant.not_after}"
         )
         mac = hmac.new(self._secret, body.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(mac, grant.mac):

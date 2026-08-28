@@ -69,8 +69,7 @@ def _counts_from_leaf_suites(root: ET.Element) -> dict[str, int]:
         raise ValueError("JUnit document contains no testsuite elements")
 
     return {
-        name: sum(_integer_attribute(suite, name) for suite in leaf_suites)
-        for name in COUNT_FIELDS
+        name: sum(_integer_attribute(suite, name) for suite in leaf_suites) for name in COUNT_FIELDS
     }
 
 
@@ -95,16 +94,12 @@ def read_bounded_junit(path: Path) -> bytes:
 
     size = path.stat().st_size
     if size > MAX_JUNIT_BYTES:
-        raise ValueError(
-            f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit"
-        )
+        raise ValueError(f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit")
 
     with path.open("rb") as handle:
         data = handle.read(MAX_JUNIT_BYTES + 1)
     if len(data) > MAX_JUNIT_BYTES:
-        raise ValueError(
-            f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit"
-        )
+        raise ValueError(f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit")
     return data
 
 
@@ -124,9 +119,7 @@ def _decode_supported_xml(data: bytes) -> str:
 
 def parse_junit_bytes(data: bytes) -> dict[str, int]:
     if len(data) > MAX_JUNIT_BYTES:
-        raise ValueError(
-            f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit"
-        )
+        raise ValueError(f"JUnit artifact exceeds the {MAX_JUNIT_BYTES}-byte verification limit")
 
     xml_text = _decode_supported_xml(data)
     root = ET.fromstring(xml_text)
@@ -257,8 +250,7 @@ def verify_junit(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Convert a pytest JUnit artifact into an exact-SHA-bound atomic evidence "
-            "receipt."
+            "Convert a pytest JUnit artifact into an exact-SHA-bound atomic evidence receipt."
         )
     )
     parser.add_argument("--junit", type=Path, required=True)

@@ -217,9 +217,7 @@ def test_readme_contract_rejects_wrong_order_and_local_paths(tmp_path: Path) -> 
     readme = tmp_path / "README.md"
     windows_path = "C:" + "\\" + "Users" + "\\" + "casey" + "\\repo"
     readme.write_text(
-        "\n".join(
-            (*reversed(HEADINGS), *REQUIRED_EVIDENCE, windows_path, "/home/casey/repo")
-        )
+        "\n".join((*reversed(HEADINGS), *REQUIRED_EVIDENCE, windows_path, "/home/casey/repo"))
         + "\n",
         encoding="utf-8",
     )

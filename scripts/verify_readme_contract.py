@@ -57,8 +57,7 @@ def _visible_markdown_lines(text: str) -> Iterator[tuple[int, str]]:
 def _heading_positions(text: str) -> tuple[dict[str, list[int]], tuple[str, ...]]:
     matches = {heading: [] for heading in HEADINGS}
     patterns = {
-        heading: re.compile(rf"^{re.escape(heading)}(?:[ \t]+#+)?[ \t]*$")
-        for heading in HEADINGS
+        heading: re.compile(rf"^{re.escape(heading)}(?:[ \t]+#+)?[ \t]*$") for heading in HEADINGS
     }
 
     for line_number, line in _visible_markdown_lines(text):

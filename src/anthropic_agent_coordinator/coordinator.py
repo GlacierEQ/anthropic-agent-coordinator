@@ -187,12 +187,7 @@ def _validate_tasks(tasks: Sequence[Task]) -> tuple[Task, ...]:
 
     known = set(counts)
     unknown = sorted(
-        {
-            dependency
-            for task in normalized
-            for dependency in task.deps
-            if dependency not in known
-        }
+        {dependency for task in normalized for dependency in task.deps if dependency not in known}
     )
     if unknown:
         raise CoordinationError(f"unknown dependency ids: {unknown}")

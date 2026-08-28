@@ -11,8 +11,14 @@ def test_operate_preserves_constrained_plan_as_continuation_work():
     assert receipt["continuation"] == "enabled"
     assert receipt["status"] == "observed"
     assert receipt["smoke"]["kind"] == "continuation_scheduler"
-    assert any(item.startswith("constrained:continue_task:plan:reason:global_budget") for item in receipt["resolution_work"])
-    assert any(item.startswith("constrained:continue_task:implement:reason:dependency_not_completed") for item in receipt["resolution_work"])
+    assert any(
+        item.startswith("constrained:continue_task:plan:reason:global_budget")
+        for item in receipt["resolution_work"]
+    )
+    assert any(
+        item.startswith("constrained:continue_task:implement:reason:dependency_not_completed")
+        for item in receipt["resolution_work"]
+    )
 
 
 def test_main_emits_resolution_receipt_and_success_exit(monkeypatch, capsys):

@@ -74,8 +74,7 @@ class AdversarialEliteTests(unittest.TestCase):
                         if allowed is True:
                             self.assertTrue(
                                 out.get("human_approved") is True
-                                or out.get("status")
-                                in {"REFUSED", "DENIED", "ERROR", "UNKNOWN"},
+                                or out.get("status") in {"REFUSED", "DENIED", "ERROR", "UNKNOWN"},
                                 f"plan allowed unknown connector: {out!r}",
                             )
                         exercised = True
@@ -156,9 +155,7 @@ class AdversarialEliteTests(unittest.TestCase):
             public = [name for name in dir(mod) if not name.startswith("_")]
             self.assertGreater(len(public), 0)
             missing_surface = "__elite_missing_surface__"
-            with self.assertRaises(
-                (AttributeError, TypeError, ImportError, ValueError, KeyError)
-            ):
+            with self.assertRaises((AttributeError, TypeError, ImportError, ValueError, KeyError)):
                 getattr(mod, missing_surface)
 
 
