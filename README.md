@@ -36,6 +36,8 @@ Resource-constrained agent systems can produce misleading completion states: a t
 
 The coordinator produces a deterministic, reviewable plan showing which tasks are fully funded and assigned, which scheduling wave each assignment belongs to, how shared and role-specific capacity was consumed, which tasks were deferred and why, and which downstream tasks remain blocked by incomplete prerequisites.
 
+The current source also adds an **assignment-bound tool-proposal handoff**. A proposed tool call may be emitted only for a fully assigned task; deferred or unknown tasks fail closed. The proposal batch is ordered by the scheduler's assignment order, bound to the exact plan SHA-256, shaped for direct review by the separate Anthropic Safety Monitor ToolCall contract, and explicitly does not execute the tool.
+
 ### Correctness contract
 
 - Assigned tokens equal the full task estimate; partial funding is not called completion.
@@ -76,7 +78,9 @@ The scheduler intentionally preserves caller-declared priority. It does not clai
 | Surface | Responsibility |
 |---|---|
 | `src/anthropic_agent_coordinator/coordinator.py` | Typed models, graph validation, scheduling policy, and result contract |
+| `src/anthropic_agent_coordinator/tool_proposal.py` | Assignment-bound, plan-hashed tool proposal batch for independent safety review; no execution |
 | `tests/test_coordinator.py` | Budget, dependency, validation, and compatibility tests |
+| `tests/test_tool_proposal.py` | Deferred/unknown proposal refusal, ordering, bounds, and receipt determinism |
 | `tests/test_policy_and_scale.py` | Priority, ordered dependencies, CLI behavior, and large-graph tests |
 | `tests/test_legacy_allocator.py` | Historical API compatibility and idempotency tests |
 | `tests/test_verification.py` | JUnit evidence and README regression tests |
@@ -162,8 +166,8 @@ interfaces:
     - aggregate role and global token accounting
 relationships:
   - target: GlacierEQ/anthropic-safety-monitor
-    relation: INDEPENDENT_SPECIALIST
-    boundary: Safety evaluation remains a separate repository responsibility.
+    relation: PROPOSES_REVIEWABLE_CALLS_TO
+    boundary: Coordinator emits a ToolCall-compatible proposal shape; Safety Monitor independently reviews it. Neither repository executes the tool.
   - target: GlacierEQ/AKOS
     relation: GOVERNANCE_REFERENCE
     boundary: No runtime integration is claimed here.
