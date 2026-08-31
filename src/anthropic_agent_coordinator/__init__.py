@@ -26,4 +26,17 @@ __all__ = [
     "Task",
     "build_plan",
     "coordinate",
+    "MAX_PROPOSAL_ARGUMENT_BYTES",
+    "PROPOSAL_SCHEMA",
+    "ToolProposal",
+    "ToolProposalError",
+    "bind_tool_proposals",
 ]
+
+from .tool_proposal import (
+    MAX_PROPOSAL_ARGUMENT_BYTES,
+    PROPOSAL_SCHEMA,
+    ToolProposal,
+    ToolProposalError,
+    bind_tool_proposals,
+)
