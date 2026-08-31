@@ -11,12 +11,30 @@
     "deployed": false
   },
   "nonclaims": [
-    "no employer affiliation",
+    "no Anthropic affiliation, employment, endorsement, or internal access",
+    "no agent execution or external provider calls",
+    "no automatic safety approval",
     "no production deployment without receipt"
   ],
   "donor_plan": {
     "mode": "none",
     "donors": []
   },
-  "frozen_at": "2026-08-10T04:12Z"
+  "frozen_at": "2026-08-10T04:12Z",
+  "current_extension": {
+    "state": "IMPLEMENTED_CURRENT_HEAD_NATIVE_PROOF_REQUIRED",
+    "mechanism": "assignment-bound tool proposal handoff",
+    "implemented": true,
+    "tested_in_source": true,
+    "deployed": false,
+    "tool_execution": false
+  },
+  "verified_scope": [
+    "deterministic dependency-aware specialist scheduling",
+    "shared global and aggregate per-role budget enforcement",
+    "structured deferral and dependency blocking",
+    "tool proposals emitted only for fully assigned tasks",
+    "proposal batch bound to exact plan hash and review-compatible call shape"
+  ],
+  "next_gate": "exact-current-head CI receipt for scheduler plus assignment-bound tool proposal tests"
 }
