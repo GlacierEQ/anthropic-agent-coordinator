@@ -19,7 +19,8 @@
       "status": "PENDING"
     },
     "CENTRAL_MECHANISM_PRESENT": {
-      "status": "PENDING"
+      "status": "PENDING",
+      "evidence": "scheduler + assignment-bound tool proposal handoff"
     },
     "DETERMINISTIC_PROOF_GREEN": {
       "status": "PENDING"
@@ -66,5 +67,11 @@
     "reason": "schema migrate: PROMOTED XOR gap-receipt",
     "blocker": "TESTS_FAIL",
     "rule": "PROMOTED XOR gap-receipt"
+  },
+  "current_head_extension": {
+    "mechanism": "src/anthropic_agent_coordinator/tool_proposal.py",
+    "tests": "tests/test_tool_proposal.py",
+    "state": "IMPLEMENTED_CURRENT_HEAD_NATIVE_PROOF_REQUIRED",
+    "boundary": "proposal generation only; no tool execution"
   }
 }
