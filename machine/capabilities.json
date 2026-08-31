@@ -1,1 +1,11 @@
-{"capabilities": ["hyper-scaling"]}
+{
+  "capabilities": [
+    "deterministic-dag-task-scheduling",
+    "global-and-role-budget-accounting",
+    "structured-deferral-preservation",
+    "assignment-bound-tool-proposal-batching",
+    "hash-bound-plan-to-tool-review-handoff"
+  ],
+  "evidence_state": "IMPLEMENTED_CURRENT_HEAD_NATIVE_PROOF_REQUIRED",
+  "tool_execution": false
+}
