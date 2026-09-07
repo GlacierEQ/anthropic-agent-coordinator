@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
+from typing import Any
 
 from .continuation import build_continuation_plan
 from .coordinator import CoordinationError, Role, Task, build_plan
@@ -17,8 +19,54 @@ def _demo_tasks() -> tuple[Task, ...]:
     )
 
 
+def _tasks_from_payload(payload: Any) -> tuple[Task, ...]:
+    if isinstance(payload, dict):
+        payload = payload.get("tasks")
+    if not isinstance(payload, list):
+        raise CoordinationError("input must be a JSON task array or an object containing a 'tasks' array")
+
+    tasks: list[Task] = []
+    for index, raw in enumerate(payload):
+        if not isinstance(raw, dict):
+            raise CoordinationError(f"task at index {index} must be an object")
+        try:
+            task_id = raw["id"]
+            role = raw["role"]
+            tokens_est = raw["tokens_est"]
+        except KeyError as exc:
+            raise CoordinationError(
+                f"task at index {index} is missing required field {exc.args[0]!r}"
+            ) from exc
+
+        deps = raw.get("deps", ())
+        tasks.append(Task(task_id, role, tokens_est, deps=deps))
+
+    return tuple(tasks)
+
+
+def _load_tasks(source: str | None) -> tuple[Task, ...]:
+    if source is None:
+        return _demo_tasks()
+
+    try:
+        if source == "-":
+            payload = json.load(sys.stdin)
+        else:
+            with Path(source).open("r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CoordinationError(f"unable to load task graph from {source!r}: {exc}") from exc
+
+    return _tasks_from_payload(payload)
+
+
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Deterministic bounded agent coordination demo")
+    parser = argparse.ArgumentParser(description="Deterministic bounded agent coordination")
+    parser.add_argument(
+        "--input",
+        metavar="PATH",
+        help="JSON task graph file; use '-' to read JSON from stdin. Omit for the built-in demo graph.",
+    )
     parser.add_argument(
         "--completed",
         action="append",
@@ -38,7 +86,7 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        tasks = _demo_tasks()
+        tasks = _load_tasks(args.input)
         if args.completed:
             result = build_continuation_plan(
                 tasks,
