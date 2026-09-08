@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+from pathlib import Path
 
 from anthropic_agent_coordinator.__main__ import _load_tasks, _tasks_from_payload, main
 from anthropic_agent_coordinator.coordinator import CoordinationError, Role
@@ -113,3 +114,20 @@ def test_tasks_from_payload_rejects_non_array() -> None:
         assert "task array" in str(exc)
     else:
         raise AssertionError("expected CoordinationError")
+
+
+def test_anthropic_fde_production_scenario_is_directly_executable(capsys) -> None:
+    scenario = Path("examples/anthropic-fde-production-deployment.json")
+
+    assert main(["--input", str(scenario), "--budget", "12000"]) == 0
+    result = json.loads(capsys.readouterr().out)
+
+    assert result["complete"] is True
+    assert result["used_tokens"] == 11200
+    assert [assignment["task"] for assignment in result["assignments"]] == [
+        "discover_customer_workflow_and_constraints",
+        "define_production_success_safety_and_eval_contract",
+        "build_claude_mcp_agent_workflow_in_customer_system",
+        "instrument_recovery_observability_and_deployment_support",
+        "verify_customer_requirements_and_codify_repeatable_pattern",
+    ]
