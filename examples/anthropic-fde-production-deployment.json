@@ -1,0 +1,41 @@
+{
+  "scenario": "anthropic-forward-deployed-production-engagement",
+  "source": {
+    "role": "Forward Deployed Engineer",
+    "provider": "Anthropic",
+    "job_id": "5302966008",
+    "url": "https://job-boards.greenhouse.io/anthropic/jobs/5302966008"
+  },
+  "tasks": [
+    {
+      "id": "discover_customer_workflow_and_constraints",
+      "role": "explore",
+      "tokens_est": 1800,
+      "deps": []
+    },
+    {
+      "id": "define_production_success_safety_and_eval_contract",
+      "role": "plan",
+      "tokens_est": 1800,
+      "deps": ["discover_customer_workflow_and_constraints"]
+    },
+    {
+      "id": "build_claude_mcp_agent_workflow_in_customer_system",
+      "role": "implement",
+      "tokens_est": 3200,
+      "deps": ["define_production_success_safety_and_eval_contract"]
+    },
+    {
+      "id": "instrument_recovery_observability_and_deployment_support",
+      "role": "implement",
+      "tokens_est": 2800,
+      "deps": ["build_claude_mcp_agent_workflow_in_customer_system"]
+    },
+    {
+      "id": "verify_customer_requirements_and_codify_repeatable_pattern",
+      "role": "review",
+      "tokens_est": 1600,
+      "deps": ["instrument_recovery_observability_and_deployment_support"]
+    }
+  ]
+}
