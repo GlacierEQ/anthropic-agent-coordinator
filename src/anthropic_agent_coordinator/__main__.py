@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -60,12 +62,45 @@ def _load_tasks(source: str | None) -> tuple[Task, ...]:
     return _tasks_from_payload(payload)
 
 
+def _write_result(result: dict[str, Any], destination: str | None) -> None:
+    rendered = json.dumps(result, indent=2, sort_keys=True) + "\n"
+    if destination is None or destination == "-":
+        sys.stdout.write(rendered)
+        return
+
+    target = Path(destination)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            handle.write(rendered)
+            temp_path = Path(handle.name)
+        os.replace(temp_path, target)
+    except OSError as exc:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except UnboundLocalError:
+            pass
+        raise CoordinationError(f"unable to write coordination result to {destination!r}: {exc}") from exc
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Deterministic bounded agent coordination")
     parser.add_argument(
         "--input",
         metavar="PATH",
         help="JSON task graph file; use '-' to read JSON from stdin. Omit for the built-in demo graph.",
+    )
+    parser.add_argument(
+        "--output",
+        metavar="PATH",
+        help="Atomically write the machine-readable coordination result to PATH; use '-' or omit for stdout.",
     )
     parser.add_argument(
         "--completed",
@@ -95,11 +130,11 @@ def main(argv: list[str] | None = None) -> int:
             ).to_dict()
         else:
             result = build_plan(tasks, global_budget=args.budget).to_dict()
+        _write_result(result, args.output)
     except CoordinationError as exc:
         print(f"coordination failed: {exc}", file=sys.stderr)
         return 2
 
-    print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 
 
