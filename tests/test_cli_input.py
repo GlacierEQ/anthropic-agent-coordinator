@@ -73,6 +73,31 @@ def test_main_executes_external_graph_with_continuation(tmp_path, capsys) -> Non
     assert [assignment["task"] for assignment in result["assignments"]] == ["design", "implement"]
 
 
+def test_main_atomically_writes_result_for_runtime_handoff(tmp_path, capsys) -> None:
+    graph = tmp_path / "graph.json"
+    output = tmp_path / "runtime" / "plan.json"
+    graph.write_text(
+        json.dumps(
+            [
+                {"id": "discover", "role": "explore", "tokens_est": 100},
+                {"id": "implement", "role": "implement", "tokens_est": 200, "deps": ["discover"]},
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert main(["--input", str(graph), "--output", str(output), "--budget", "300"]) == 0
+    assert capsys.readouterr().out == ""
+    result = json.loads(output.read_text(encoding="utf-8"))
+    assert [assignment["task"] for assignment in result["assignments"]] == ["discover", "implement"]
+    assert list(output.parent.glob(".*.tmp")) == []
+
+
+def test_main_output_dash_preserves_stdout_contract(capsys) -> None:
+    assert main(["--output", "-"]) == 0
+    assert json.loads(capsys.readouterr().out)["assignments"]
+
+
 def test_main_rejects_malformed_graph(tmp_path, capsys) -> None:
     graph = tmp_path / "graph.json"
     graph.write_text('{"tasks":[{"id":"x","role":"explore"}]}', encoding="utf-8")
