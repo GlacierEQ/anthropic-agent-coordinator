@@ -57,7 +57,7 @@ def test_unordered_dependency_collections_are_rejected() -> None:
 
 
 def test_cli_main_emits_valid_result_json(capsys) -> None:
-    exit_code = cli.main()
+    exit_code = cli.main([])
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
 
@@ -70,12 +70,12 @@ def test_cli_main_emits_valid_result_json(capsys) -> None:
 
 
 def test_cli_main_reports_coordination_failure(monkeypatch, capsys) -> None:
-    def fail_plan(_tasks):
+    def fail_plan(_tasks, **_kwargs):
         raise CoordinationError("invalid scenario")
 
     monkeypatch.setattr(cli, "build_plan", fail_plan)
 
-    exit_code = cli.main()
+    exit_code = cli.main([])
     captured = capsys.readouterr()
 
     assert exit_code == 2
