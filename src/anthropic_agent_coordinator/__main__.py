@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import sys
@@ -25,7 +26,9 @@ def _tasks_from_payload(payload: Any) -> tuple[Task, ...]:
     if isinstance(payload, dict):
         payload = payload.get("tasks")
     if not isinstance(payload, list):
-        raise CoordinationError("input must be a JSON task array or an object containing a 'tasks' array")
+        raise CoordinationError(
+            "input must be a JSON task array or an object containing a 'tasks' array"
+        )
 
     tasks: list[Task] = []
     for index, raw in enumerate(payload):
@@ -83,11 +86,11 @@ def _write_result(result: dict[str, Any], destination: str | None) -> None:
             temp_path = Path(handle.name)
         os.replace(temp_path, target)
     except OSError as exc:
-        try:
+        with contextlib.suppress(UnboundLocalError):
             temp_path.unlink(missing_ok=True)
-        except UnboundLocalError:
-            pass
-        raise CoordinationError(f"unable to write coordination result to {destination!r}: {exc}") from exc
+        raise CoordinationError(
+            f"unable to write coordination result to {destination!r}: {exc}"
+        ) from exc
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -95,12 +98,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--input",
         metavar="PATH",
-        help="JSON task graph file; use '-' to read JSON from stdin. Omit for the built-in demo graph.",
+        help="JSON task graph file; use '-' to read JSON from stdin. "
+        "Omit for the built-in demo graph.",
     )
     parser.add_argument(
         "--output",
         metavar="PATH",
-        help="Atomically write the machine-readable coordination result to PATH; use '-' or omit for stdout.",
+        help="Atomically write the machine-readable coordination result to PATH; "
+        "use '-' or omit for stdout.",
     )
     parser.add_argument(
         "--completed",
@@ -123,11 +128,18 @@ def main(argv: list[str] | None = None) -> int:
     try:
         tasks = _load_tasks(args.input)
         if args.completed:
-            result = build_continuation_plan(
+            continuation = build_continuation_plan(
                 tasks,
                 completed_task_ids=args.completed,
                 global_budget=args.budget,
-            ).to_dict()
+            )
+            # The CLI emits one flat result shape (glaciereq.agent-coordinator.result.v1)
+            # whether or not this invocation resumes work: the plan's top-level fields
+            # plus the continuation metadata. The library's nested continuation dict
+            # (completed_before + nested plan) is unchanged; only the CLI flattens it.
+            result = continuation.plan.to_dict()
+            result["completed_task_ids"] = list(continuation.completed_before)
+            result["checkpoint_sha256"] = continuation.checkpoint_sha256
         else:
             result = build_plan(tasks, global_budget=args.budget).to_dict()
         _write_result(result, args.output)

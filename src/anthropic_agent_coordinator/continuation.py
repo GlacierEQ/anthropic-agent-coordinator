@@ -37,7 +37,9 @@ class ContinuationResult:
         }
 
 
-def _normalize_completed(tasks: tuple[Task, ...], completed_task_ids: Sequence[str]) -> tuple[str, ...]:
+def _normalize_completed(
+    tasks: tuple[Task, ...], completed_task_ids: Sequence[str]
+) -> tuple[str, ...]:
     if isinstance(completed_task_ids, (str, bytes)):
         raise CoordinationError("completed_task_ids must be an ordered collection of strings")
     completed = tuple(completed_task_ids)
@@ -59,13 +61,17 @@ def _normalize_completed(tasks: tuple[Task, ...], completed_task_ids: Sequence[s
         missing = tuple(dep for dep in task_by_id[task_id].deps if dep not in completed_set)
         if missing:
             raise CoordinationError(
-                f"completed task {task_id!r} is not dependency-closed; missing completed deps: {missing}"
+                f"completed task {task_id!r} is not dependency-closed; "
+                f"missing completed deps: {missing}"
             )
     return completed
 
 
 def _checkpoint_hash(completed: tuple[str, ...]) -> str:
-    payload = dumps({"schema": CONTINUATION_SCHEMA, "completed_before": completed}, separators=(",", ":"))
+    payload = dumps(
+        {"schema": CONTINUATION_SCHEMA, "completed_before": completed},
+        separators=(",", ":"),
+    )
     return sha256(payload.encode("utf-8")).hexdigest()
 
 

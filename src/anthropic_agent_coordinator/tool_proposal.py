@@ -62,7 +62,9 @@ def bind_tool_proposals(
 ) -> dict[str, object]:
     """Bind proposals only to fully assigned tasks and preserve assignment order."""
 
-    assignment_order = {assignment.task_id: index for index, assignment in enumerate(plan.assignments)}
+    assignment_order = {
+        assignment.task_id: index for index, assignment in enumerate(plan.assignments)
+    }
     assigned = set(assignment_order)
     deferred = {task.task_id for task in plan.deferred}
     by_task: dict[str, ToolProposal] = {}

@@ -41,13 +41,13 @@ class CoordinatorHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         if self.path == "/healthz":
             self._json(200, {"status": "ok"})
             return
         self._json(404, {"error": "not found"})
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         if self.path != "/v1/coordinate":
             self._json(404, {"error": "not found"})
             return
